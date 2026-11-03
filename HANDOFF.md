@@ -1,8 +1,8 @@
 # CombatOverhaul 交接文档
 
-最后更新：2026-11-01 15:39（Asia/Shanghai）
+最后更新：2026-11-03 19:43（Asia/Shanghai）
 工程根目录：`C:\Users\Zero\Desktop\more_damage\combatoverhaul`
-当前构建：`build/libs/combatoverhaul-1.0.0.jar`，563,747 bytes，2026-11-01 15:39:14
+当前构建：`build/libs/combatoverhaul-1.0.0.jar`，563,078 bytes，2026-11-03 19:43:18
 当前自检：`gradlew coreCheck --offline` PASS（默认 + ER + 原生 player/Alex + 多段比例切分 + source_bones + bind_bones + 双层皮肤切割 + 显式跟随映射 + 接缝柔化 + 玩家渲染回接）
 部署状态：已同步到 `E:\.minecraft\versions\DLC测试\mods\` 与 `prod_run\mods\`（SHA-256 一致）
 
@@ -84,6 +84,13 @@ WeaponBlockClientHandler / ShieldBlockHandler / ParCoolBridge
 编译依赖 `combatoverhaul/libs/damageoverhaul-1.0.0.jar` 仍是旧 425,490 bytes，尚未包含这些 API；接战斗姿态前必须先更新该 jar。客户端 blocking 状态是否由 `BlockStatePacket` 维护还需确认，不能假设 `WeaponBlockHandler.isBlocking` 可直接在客户端动画层调用。
 
 **动画缺失回退原版**：标准人形查看器先调用 `humanoid.setupAnim(player, walkAnimation.position(), speed(), ...)` 建立原版基础姿态；自定义 action 只有实际包含该骨骼通道时才覆盖。没有行走/格挡片段时，骨架继续使用原版走路/待机，不会被清成 rest pose。实机模型仍可见，但需更新布局/盔甲几何。
+
+**原版真盔甲几何（阶段 1）**：标准人形查看器改用 `HumanoidArmorModel` 的两个真实 baked layer：
+```text
+PLAYER_OUTER_ARMOR / PLAYER_SLIM_OUTER_ARMOR  -> diamond_layer_1（头/胸/靴）
+PLAYER_INNER_ARMOR / PLAYER_SLIM_INNER_ARMOR  -> diamond_layer_2（护腿）
+```
+不再用 PlayerModel 冒充盔甲。`HumanoidMeshRenderer` 捕获真实 ModelPart 几何后绘制；四槽开关分别控制 outer/inner 的 part 可见性。实机截图 `humanoid_true_armor.png` 中钻石盔甲几何已套在角色头/胸/腿/脚位置。
 
 **标准人形查看器（新）**：`client/screen/HumanoidPreviewScreen` + `/combatoverhaul humanoid`。直接实例化 `PlayerModel`（`HumanoidModel` 子类），从当前玩家动作表读动作池；`HumanoidMeshRenderer` 用 VertexConsumer 捕获 ModelPart 几何并按屏幕空间绘制，不再走 ParsedModel 代理。左侧动作列表可点击，右侧四个盔甲槽开关。当前盔甲仍用 PlayerModel 同 part + diamond 盔甲纹理做位置/尺寸代理，**尚未从真实 HumanoidModel 盔甲层提取 inflate 后的几何**；模型本体已可显示（`humanoid_preview6.png`），但尺寸/布局还需调大。
 
@@ -508,10 +515,10 @@ tools/draw_skeleton.py
 
 ### 6.3 验证证据
 
-已实际编译（2026-11-01 15:39，完整 build）：
+已实际编译（2026-11-03 19:43，完整 build）：
 
 ```text
-BUILD SUCCESSFUL in 16s
+BUILD SUCCESSFUL in 21s
 > Task :coreCheck
 CoreDataCheck PASS
 > Task :test

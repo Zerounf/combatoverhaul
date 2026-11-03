@@ -39,7 +39,8 @@ public final class HumanoidPreviewScreen extends Screen {
     private final String modelPath;
     private final List<ActionStore.Action> actions = new ArrayList<>();
     private final PlayerModel<Player> humanoid;
-    private final PlayerModel<Player> armor;
+    private final net.minecraft.client.model.HumanoidArmorModel<Player> armorOuter;
+    private final net.minecraft.client.model.HumanoidArmorModel<Player> armorInner;
     private final ResourceLocation skin;
     private final ModelPreviewRenderer preview = new ModelPreviewRenderer();
     private ParsedModel poseModel;
@@ -66,7 +67,12 @@ public final class HumanoidPreviewScreen extends Screen {
         boolean slim = ClientAnimHandler.isSlimPlayer(p);
         var layer = mc.getEntityModels().bakeLayer(slim ? ModelLayers.PLAYER_SLIM : ModelLayers.PLAYER);
         humanoid = new PlayerModel<>(layer, slim);
-        armor = new PlayerModel<>(layer, slim);
+        var outerLayer = mc.getEntityModels().bakeLayer(
+                slim ? ModelLayers.PLAYER_SLIM_OUTER_ARMOR : ModelLayers.PLAYER_OUTER_ARMOR);
+        var innerLayer = mc.getEntityModels().bakeLayer(
+                slim ? ModelLayers.PLAYER_SLIM_INNER_ARMOR : ModelLayers.PLAYER_INNER_ARMOR);
+        armorOuter = new net.minecraft.client.model.HumanoidArmorModel<>(outerLayer);
+        armorInner = new net.minecraft.client.model.HumanoidArmorModel<>(innerLayer);
         actions.addAll(ActionStore.load("minecraft", modelPath, false));
         ActionCache.Entry e = ActionCache.get(ActionCache.keyFor("minecraft", modelPath, false));
         poseModel = e == null ? null : e.model;
@@ -243,9 +249,12 @@ public final class HumanoidPreviewScreen extends Screen {
         HumanoidMeshRenderer.render(g, humanoid, skin, cx, cy, scale);
         if (helmet || chest || legs || boots) {
             syncArmorVisibility();
-            HumanoidMeshRenderer.render(g, armor,
+            HumanoidMeshRenderer.render(g, armorOuter,
                     new ResourceLocation("minecraft:textures/models/armor/diamond_layer_1.png"),
-                    cx, cy, scale * 1.02);
+                    cx, cy, scale);
+            HumanoidMeshRenderer.render(g, armorInner,
+                    new ResourceLocation("minecraft:textures/models/armor/diamond_layer_2.png"),
+                    cx, cy, scale);
         }
         drawLine(g, listW, 0, listW, height, 0xFF3A4250);
         g.drawString(font, "动作 tick: " + (int) tick, listW + 8, height - 18, 0xFF9FA8B8, false);
@@ -253,45 +262,6 @@ public final class HumanoidPreviewScreen extends Screen {
             g.drawString(font, actions.get(actionIndex).name, listW + 8, height - 32, 0xFFFFFFFF, false);
         }
         super.render(g, mouseX, mouseY, partialTick);
-    }
-
-    private void renderHumanoid(GuiGraphics g, boolean armorPass) {
-        MultiBufferSource.BufferSource buffers = g.bufferSource();
-        PoseStack pose = g.pose();
-        pose.pushPose();
-        float scale = Math.min(width, height) * 0.55f / 24f;
-        pose.translate(width * 0.60, height * 0.56, 0);
-        pose.scale(-scale, -scale, 1.0f);
-        pose.mulPose(Axis.YP.rotationDegrees(180));
-        Lighting.setupForFlatItems();
-        RenderSystem.disableDepthTest();
-        if (!armorPass) {
-            VertexConsumer vc = buffers.getBuffer(RenderType.entityCutoutNoCull(skin));
-            humanoid.renderToBuffer(pose, vc, LightTexture.FULL_BRIGHT,
-                    OverlayTexture.NO_OVERLAY, 1f, 1f, 1f, 1f);
-            buffers.endBatch();
-        } else {
-            syncArmorVisibility();
-            ResourceLocation layer1 = new ResourceLocation(
-                    "minecraft:textures/models/armor/diamond_layer_1.png");
-            ResourceLocation layer2 = new ResourceLocation(
-                    "minecraft:textures/models/armor/diamond_layer_2.png");
-            if (helmet || chest || boots) {
-                VertexConsumer vc = buffers.getBuffer(RenderType.armorCutoutNoCull(layer1));
-                armor.renderToBuffer(pose, vc, LightTexture.FULL_BRIGHT,
-                        OverlayTexture.NO_OVERLAY, 1f, 1f, 1f, 1f);
-                buffers.endBatch();
-            }
-            if (legs) {
-                VertexConsumer vc = buffers.getBuffer(RenderType.armorCutoutNoCull(layer2));
-                armor.renderToBuffer(pose, vc, LightTexture.FULL_BRIGHT,
-                        OverlayTexture.NO_OVERLAY, 1f, 1f, 1f, 1f);
-                buffers.endBatch();
-            }
-        }
-        RenderSystem.enableDepthTest();
-        Lighting.setupFor3DItems();
-        pose.popPose();
     }
 
     private void syncArmorModelVisibility() {
@@ -335,19 +305,30 @@ public final class HumanoidPreviewScreen extends Screen {
     }
 
     private void syncArmorVisibility() {
-        copy("head", armor.head);
-        copy("body", armor.body);
-        copy("right_arm", armor.rightArm);
-        copy("left_arm", armor.leftArm);
-        copy("right_leg", armor.rightLeg);
-        copy("left_leg", armor.leftLeg);
-        armor.setAllVisible(false);
-        armor.head.visible = helmet;
-        armor.body.visible = chest || legs;
-        armor.rightArm.visible = chest;
-        armor.leftArm.visible = chest;
-        armor.rightLeg.visible = legs || boots;
-        armor.leftLeg.visible = legs || boots;
+        copyArmor("head", armorOuter.head, armorInner.head);
+        copyArmor("body", armorOuter.body, armorInner.body);
+        copyArmor("right_arm", armorOuter.rightArm, armorInner.rightArm);
+        copyArmor("left_arm", armorOuter.leftArm, armorInner.leftArm);
+        copyArmor("right_leg", armorOuter.rightLeg, armorInner.rightLeg);
+        copyArmor("left_leg", armorOuter.leftLeg, armorInner.leftLeg);
+        armorOuter.setAllVisible(false);
+        armorOuter.head.visible = helmet;
+        armorOuter.body.visible = chest;
+        armorOuter.rightArm.visible = chest;
+        armorOuter.leftArm.visible = chest;
+        armorOuter.rightLeg.visible = boots;
+        armorOuter.leftLeg.visible = boots;
+
+        armorInner.setAllVisible(false);
+        armorInner.body.visible = legs;
+        armorInner.rightLeg.visible = legs;
+        armorInner.leftLeg.visible = legs;
+    }
+
+    private void copyArmor(String semantic, net.minecraft.client.model.geom.ModelPart outer,
+                           net.minecraft.client.model.geom.ModelPart inner) {
+        copy(semantic, outer);
+        copy(semantic, inner);
     }
 
     @Override
