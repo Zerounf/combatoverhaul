@@ -1,8 +1,8 @@
 # CombatOverhaul 交接文档
 
-最后更新：2026-11-03 19:43（Asia/Shanghai）
+最后更新：2026-11-03 20:15（Asia/Shanghai）
 工程根目录：`C:\Users\Zero\Desktop\more_damage\combatoverhaul`
-当前构建：`build/libs/combatoverhaul-1.0.0.jar`，563,078 bytes，2026-11-03 19:43:18
+当前构建：`build/libs/combatoverhaul-1.0.0.jar`，566,206 bytes，2026-11-03 20:15:17
 当前自检：`gradlew coreCheck --offline` PASS（默认 + ER + 原生 player/Alex + 多段比例切分 + source_bones + bind_bones + 双层皮肤切割 + 显式跟随映射 + 接缝柔化 + 玩家渲染回接）
 部署状态：已同步到 `E:\.minecraft\versions\DLC测试\mods\` 与 `prod_run\mods\`（SHA-256 一致）
 
@@ -91,6 +91,10 @@ PLAYER_OUTER_ARMOR / PLAYER_SLIM_OUTER_ARMOR  -> diamond_layer_1（头/胸/靴�
 PLAYER_INNER_ARMOR / PLAYER_SLIM_INNER_ARMOR  -> diamond_layer_2（护腿）
 ```
 不再用 PlayerModel 冒充盔甲。`HumanoidMeshRenderer` 捕获真实 ModelPart 几何后绘制；四槽开关分别控制 outer/inner 的 part 可见性。实机截图 `humanoid_true_armor.png` 中钻石盔甲几何已套在角色头/胸/腿/脚位置。
+
+**查看器相机与深度排序（新）**：标准人形查看器支持左键拖拽旋转 yaw/pitch、滚轮缩放；模型旋转中心按 ModelPart 的 1/16 坐标取 `y-0.5`，不再绕脚底。`HumanoidMeshRenderer` 统一捕获皮肤 + 外层盔甲 + 内层护腿到同一个四边形列表，按相机深度排序后再分批绘制，盔甲不再无条件盖在人物上。实机 `viewer_layered.png` / `viewer_rotated.png`。
+
+**游戏内原版盔甲**：`SkinnedArmorRenderer.renderVanillaFallback` 之前错误地用 `HumanoidModel`（皮肤几何）当盔甲；已改为真实 `HumanoidArmorModel` + `PLAYER_OUTER_ARMOR` / `PLAYER_INNER_ARMOR` 层，`LEGS` 使用 inner layer_2，其他槽 outer layer_1。自定义盔甲仍走 `SkinnedArmorRenderer` 自动蒙皮路径。
 
 **标准人形查看器（新）**：`client/screen/HumanoidPreviewScreen` + `/combatoverhaul humanoid`。直接实例化 `PlayerModel`（`HumanoidModel` 子类），从当前玩家动作表读动作池；`HumanoidMeshRenderer` 用 VertexConsumer 捕获 ModelPart 几何并按屏幕空间绘制，不再走 ParsedModel 代理。左侧动作列表可点击，右侧四个盔甲槽开关。当前盔甲仍用 PlayerModel 同 part + diamond 盔甲纹理做位置/尺寸代理，**尚未从真实 HumanoidModel 盔甲层提取 inflate 后的几何**；模型本体已可显示（`humanoid_preview6.png`），但尺寸/布局还需调大。
 
@@ -515,10 +519,10 @@ tools/draw_skeleton.py
 
 ### 6.3 验证证据
 
-已实际编译（2026-11-03 19:43，完整 build）：
+已实际编译（2026-11-03 20:15，完整 build）：
 
 ```text
-BUILD SUCCESSFUL in 21s
+BUILD SUCCESSFUL in 15s
 > Task :coreCheck
 CoreDataCheck PASS
 > Task :test

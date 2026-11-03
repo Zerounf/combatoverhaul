@@ -54,6 +54,12 @@ public final class HumanoidPreviewScreen extends Screen {
     private boolean chest = true;
     private boolean legs = true;
     private boolean boots = true;
+    private float viewYaw = 0f;
+    private float viewPitch = 0f;
+    private double lastDragX;
+    private double lastDragY;
+    private boolean viewDrag;
+    private float viewZoom = 1.0f;
 
     public HumanoidPreviewScreen() {
         super(Component.literal("标准人形 HumanoidModel"));
@@ -245,17 +251,17 @@ public final class HumanoidPreviewScreen extends Screen {
         int vy1 = height - 36;
         double cx = width * 0.56;
         double cy = height * 0.54;
-        double scale = Math.min(width, height) * 1.7 / 24.0;
-        HumanoidMeshRenderer.render(g, humanoid, skin, cx, cy, scale);
+        double scale = Math.min(width, height) * 1.7 / 24.0 * viewZoom * 3.5;
+        List<HumanoidMeshRenderer.Layer> layers = new ArrayList<>();
+        layers.add(new HumanoidMeshRenderer.Layer(humanoid, skin));
         if (helmet || chest || legs || boots) {
             syncArmorVisibility();
-            HumanoidMeshRenderer.render(g, armorOuter,
-                    new ResourceLocation("minecraft:textures/models/armor/diamond_layer_1.png"),
-                    cx, cy, scale);
-            HumanoidMeshRenderer.render(g, armorInner,
-                    new ResourceLocation("minecraft:textures/models/armor/diamond_layer_2.png"),
-                    cx, cy, scale);
+            layers.add(new HumanoidMeshRenderer.Layer(armorOuter,
+                    new ResourceLocation("minecraft:textures/models/armor/diamond_layer_1.png")));
+            layers.add(new HumanoidMeshRenderer.Layer(armorInner,
+                    new ResourceLocation("minecraft:textures/models/armor/diamond_layer_2.png")));
         }
+        HumanoidMeshRenderer.render(g, layers, cx, cy, scale, viewYaw, viewPitch);
         drawLine(g, listW, 0, listW, height, 0xFF3A4250);
         g.drawString(font, "动作 tick: " + (int) tick, listW + 8, height - 18, 0xFF9FA8B8, false);
         if (actionIndex >= 0 && actionIndex < actions.size()) {
@@ -341,7 +347,38 @@ public final class HumanoidPreviewScreen extends Screen {
                 return true;
             }
         }
-        return super.mouseClicked(mx, my, button);
+        if (super.mouseClicked(mx, my, button)) {
+            return true;
+        }
+        if (button == 0 && mx > listW && my > 70) {
+            viewDrag = true;
+            lastDragX = mx;
+            lastDragY = my;
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public boolean mouseDragged(double mx, double my, int button, double dx, double dy) {
+        if (viewDrag && button == 0) {
+            viewYaw += (float) (mx - lastDragX) * 0.8f;
+            viewPitch = Math.max(-80f, Math.min(80f,
+                    viewPitch + (float) (my - lastDragY) * 0.8f));
+            lastDragX = mx;
+            lastDragY = my;
+            return true;
+        }
+        return super.mouseDragged(mx, my, button, dx, dy);
+    }
+
+    @Override
+    public boolean mouseReleased(double mx, double my, int button) {
+        if (viewDrag && button == 0) {
+            viewDrag = false;
+            return true;
+        }
+        return super.mouseReleased(mx, my, button);
     }
 
     @Override
@@ -351,7 +388,9 @@ public final class HumanoidPreviewScreen extends Screen {
                     actionScroll - (int) Math.signum(delta)));
             return true;
         }
-        return super.mouseScrolled(mx, my, delta);
+        viewZoom = Math.max(0.35f, Math.min(3.0f,
+                viewZoom * (float) Math.pow(1.12, Math.signum(delta))));
+        return true;
     }
 
     private static void drawLine(GuiGraphics g, int x0, int y0, int x1, int y1, int color) {

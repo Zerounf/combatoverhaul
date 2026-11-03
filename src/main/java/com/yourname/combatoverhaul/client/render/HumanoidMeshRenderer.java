@@ -3,7 +3,6 @@ package com.yourname.combatoverhaul.client.render;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import com.yourname.combatoverhaul.client.model.ParsedModel;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.client.model.PlayerModel;
@@ -13,19 +12,24 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.ResourceLocation;
+import org.joml.Quaternionf;
+import org.joml.Vector3f;
 
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
 /**
- * 把 vanilla HumanoidModel 的 ModelPart 几何捕获成屏幕空间四边形，
- * 用 GUI 的 MultiBufferSource 画出来。这样查看器显示的是真正的
- * HumanoidModel/PlayerModel part，而不是另一套 ParsedModel 代理。
+ * Captures vanilla HumanoidModel ModelPart geometry and draws it in a GUI.
+ * Skin and armor are captured in the same coordinate space; the caller can
+ * pass all layers together so depth sorting is done across them.
  */
 public final class HumanoidMeshRenderer {
 
     private HumanoidMeshRenderer() {
+    }
+
+    public record Layer(HumanoidModel<?> model, ResourceLocation texture) {
     }
 
     private static final class V {
@@ -34,17 +38,24 @@ public final class HumanoidMeshRenderer {
 
     private static final class Quad {
         final V[] v = new V[4];
+        ResourceLocation texture;
         float depth;
     }
 
     private static final class Capture implements VertexConsumer {
         final List<Quad> out = new ArrayList<>();
+        final ResourceLocation texture;
         Quad cur;
+
+        Capture(ResourceLocation texture) {
+            this.texture = texture;
+        }
 
         @Override
         public VertexConsumer vertex(double x, double y, double z) {
             if (cur == null) {
                 cur = new Quad();
+                cur.texture = texture;
             }
             int i = curIndex();
             if (i >= 0 && i < 4) {
@@ -116,50 +127,86 @@ public final class HumanoidMeshRenderer {
                 cur = null;
             }
         }
-
     }
 
     public static void render(GuiGraphics g, HumanoidModel<?> model, ResourceLocation texture,
                               double cx, double cy, double scale) {
+        render(g, model, texture, cx, cy, scale, 0f, 0f);
+    }
+
+    public static void render(GuiGraphics g, HumanoidModel<?> model, ResourceLocation texture,
+                              double cx, double cy, double scale,
+                              float yawDeg, float pitchDeg) {
         if (model == null || texture == null) {
             return;
         }
-        Capture cap = new Capture();
-        PoseStack pose = new PoseStack();
-        renderPart(model.head, pose, cap);
-        if (model instanceof PlayerModel<?> player) {
-            renderPart(player.hat, pose, cap);
-            renderPart(player.jacket, pose, cap);
-            renderPart(player.rightSleeve, pose, cap);
-            renderPart(player.leftSleeve, pose, cap);
-            renderPart(player.rightPants, pose, cap);
-            renderPart(player.leftPants, pose, cap);
-        } else {
-            renderPart(model.hat, pose, cap);
-        }
-        renderPart(model.body, pose, cap);
-        renderPart(model.rightArm, pose, cap);
-        renderPart(model.leftArm, pose, cap);
-        renderPart(model.rightLeg, pose, cap);
-        renderPart(model.leftLeg, pose, cap);
+        Capture cap = new Capture(texture);
+        capture(model, new PoseStack(), cap);
+        draw(g, cap.out, cx, cy, scale, yawDeg, pitchDeg);
+    }
 
-        if (cap.out.isEmpty()) {
+    public static void render(GuiGraphics g, List<Layer> layers,
+                              double cx, double cy, double scale,
+                              float yawDeg, float pitchDeg) {
+        if (layers == null || layers.isEmpty()) {
             return;
         }
-        for (Quad q : cap.out) {
+        List<Quad> all = new ArrayList<>();
+        PoseStack pose = new PoseStack();
+        for (Layer layer : layers) {
+            if (layer.model() == null || layer.texture() == null) {
+                continue;
+            }
+            Capture cap = new Capture(layer.texture());
+            capture(layer.model(), pose, cap);
+            all.addAll(cap.out);
+        }
+        draw(g, all, cx, cy, scale, yawDeg, pitchDeg);
+    }
+
+    private static void draw(GuiGraphics g, List<Quad> quads,
+                             double cx, double cy, double scale,
+                             float yawDeg, float pitchDeg) {
+        if (quads.isEmpty()) {
+            return;
+        }
+        Quaternionf rot = new Quaternionf()
+                .rotationY((float) Math.toRadians(yawDeg))
+                .rotateX((float) Math.toRadians(pitchDeg));
+        for (Quad q : quads) {
             float z = 0;
             for (V v : q.v) {
+                // ModelPart vertices are in 1/16 block units in 1.20.1.
+                Vector3f p = new Vector3f(v.x, v.y - 0.5f, v.z);
+                rot.transform(p);
+                v.x = p.x;
+                v.y = p.y;
+                v.z = p.z;
                 z += v.z;
             }
             q.depth = z / 4f;
         }
-        cap.out.sort(Comparator.comparingDouble(q -> -q.depth));
+        quads.sort(Comparator.comparingDouble(q -> q.depth));
+
         RenderSystem.disableDepthTest();
         MultiBufferSource.BufferSource buffers = g.bufferSource();
-        VertexConsumer vc = buffers.getBuffer(RenderType.entityCutoutNoCull(texture));
-        for (Quad q : cap.out) {
-            for (int i = 0; i < 4; i++) {
-                V v = q.v[i];
+        ResourceLocation currentTexture = null;
+        VertexConsumer vc = null;
+        for (Quad q : quads) {
+            if (q.texture == null) {
+                continue;
+            }
+            if (!q.texture.equals(currentTexture)) {
+                if (vc != null) {
+                    buffers.endBatch();
+                }
+                currentTexture = q.texture;
+                vc = buffers.getBuffer(RenderType.entityCutoutNoCull(currentTexture));
+            }
+            if (vc == null) {
+                continue;
+            }
+            for (V v : q.v) {
                 float sx = (float) (cx + v.x * scale);
                 float sy = (float) (cy + v.y * scale);
                 vc.vertex(sx, sy, 0).color(255, 255, 255, 255)
@@ -167,11 +214,32 @@ public final class HumanoidMeshRenderer {
                         .uv2(LightTexture.FULL_BRIGHT).normal(0, 0, 1).endVertex();
             }
         }
-        buffers.endBatch();
+        if (vc != null) {
+            buffers.endBatch();
+        }
         RenderSystem.enableDepthTest();
     }
 
-    private static void renderPart(ModelPart part, PoseStack pose, Capture cap) {
+    private static void capture(HumanoidModel<?> model, PoseStack pose, Capture cap) {
+        capturePart(model.head, pose, cap);
+        if (model instanceof PlayerModel<?> player) {
+            capturePart(player.hat, pose, cap);
+            capturePart(player.jacket, pose, cap);
+            capturePart(player.rightSleeve, pose, cap);
+            capturePart(player.leftSleeve, pose, cap);
+            capturePart(player.rightPants, pose, cap);
+            capturePart(player.leftPants, pose, cap);
+        } else {
+            capturePart(model.hat, pose, cap);
+        }
+        capturePart(model.body, pose, cap);
+        capturePart(model.rightArm, pose, cap);
+        capturePart(model.leftArm, pose, cap);
+        capturePart(model.rightLeg, pose, cap);
+        capturePart(model.leftLeg, pose, cap);
+    }
+
+    private static void capturePart(ModelPart part, PoseStack pose, Capture cap) {
         if (part == null || !part.visible) {
             return;
         }

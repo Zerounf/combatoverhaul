@@ -361,8 +361,14 @@ public final class SkinnedArmorRenderer {
         // HumanoidModel 和 player 模型使用同一套 canonical 坐标：
         // 头 -8..0、身体 0..12、腿 12..24。pose 已经由 SkinnedPlayerRenderer
         // 复制了原版 scale(-1,-1,1)+translate(0,-1.501,0)，这里不能再额外缩放/平移。
-        HumanoidModel<Player> model = new HumanoidModel<>(
-                Minecraft.getInstance().getEntityModels().bakeLayer(ModelLayers.PLAYER));
+        EquipmentSlot slot = armor.getEquipmentSlot();
+        boolean inner = slot == EquipmentSlot.LEGS;
+        boolean slim = ClientAnimHandler.isSlimPlayer(player);
+        var layerLocation = inner
+                ? (slim ? ModelLayers.PLAYER_SLIM_INNER_ARMOR : ModelLayers.PLAYER_INNER_ARMOR)
+                : (slim ? ModelLayers.PLAYER_SLIM_OUTER_ARMOR : ModelLayers.PLAYER_OUTER_ARMOR);
+        HumanoidModel<Player> model = new net.minecraft.client.model.HumanoidArmorModel<>(
+                Minecraft.getInstance().getEntityModels().bakeLayer(layerLocation));
         ParsedModel pm = ClientAnimHandler.currentRenderModel();
         if (pm != null) {
             copyPart(pm, "head", model.head);
@@ -372,7 +378,6 @@ public final class SkinnedArmorRenderer {
             copyPart(pm, "right_leg", model.rightLeg);
             copyPart(pm, "left_leg", model.leftLeg);
         }
-        EquipmentSlot slot = armor.getEquipmentSlot();
         model.setAllVisible(false);
         switch (slot) {
             case HEAD -> model.head.visible = true;
