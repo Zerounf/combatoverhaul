@@ -1,0 +1,145 @@
+buildscript {
+    repositories {
+        maven { url = 'https://repo.spongepowered.org/repository/maven-public/' }
+    }
+    dependencies {
+        classpath 'org.spongepowered:mixingradle:0.7-SNAPSHOT'
+    }
+}
+
+plugins {
+    id 'eclipse'
+    id 'idea'
+    id 'net.minecraftforge.gradle' version '[6.0,6.2)'
+}
+
+apply plugin: 'org.spongepowered.mixin'
+
+version = mod_version
+group = mod_group_id
+
+base {
+    archivesName = mod_id
+}
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+
+minecraft {
+    mappings channel: mapping_channel, version: mapping_version
+
+    copyIdeResources = true
+
+    runs {
+        configureEach {
+            workingDirectory project.file('run')
+
+            property 'forge.logging.markers', 'REGISTRIES'
+            property 'forge.logging.console.level', 'debug'
+
+            mods {
+                "${mod_id}" {
+                    source sourceSets.main
+                }
+            }
+        }
+
+        client {
+            property 'forge.enabledGameTestNamespaces', mod_id
+        }
+
+        server {
+            property 'forge.enabledGameTestNamespaces', mod_id
+            args '--nogui'
+        }
+
+        data {
+            workingDirectory project.file('run-data')
+            args '--mod', mod_id, '--all', '--output', file('src/generated/resources/'), '--existing', file('src/main/resources/')
+        }
+    }
+}
+
+sourceSets.main.resources { srcDir 'src/generated/resources' }
+
+repositories {
+    maven {
+        url = 'https://maven.aliyun.com/repository/public'
+    }
+
+    // 主模组 jar 放在 libs/ 下（flatDir），编译期通过 fg.deobf 反混淆后引用其 API
+    flatDir {
+        dirs 'libs'
+    }
+}
+
+dependencies {
+    minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
+
+    // Mixin 注解处理器：生成 refmap（dev official 名 → 生产 SRG 名），mixin 生产环境注入必需
+    annotationProcessor('org.spongepowered:mixin:0.8.5:processor')
+
+    // 主模组 damageoverhaul（硬依赖）：编译期读其 ConfigLoader 等 API。
+    // 仅 compileOnly：开发环境 runClient 不会自动加载主模组；
+    // 实机测试时把 damageoverhaul jar 与本模组 jar 一起放进 mods 文件夹即可。
+    compileOnly fg.deobf("blank:damageoverhaul:${damageoverhaul_version}")
+}
+
+mixin {
+    add sourceSets.main, 'combatoverhaul.refmap.json'
+    config 'combatoverhaul.mixins.json'
+}
+
+// 纯 Java 核心自检：不启动 Minecraft、不依赖 JUnit 运行时。
+// 覆盖模型 JSON 的骨骼未知字段保留、骨架 pivot 缺失语义、网格/权重归一化与非法数据拒绝。
+tasks.register('coreCheck', JavaExec) {
+    group = 'verification'
+    description = 'Runs offline core data checks (model/mesh/weights) without launching Minecraft.'
+    dependsOn 'testClasses'
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.yourname.combatoverhaul.CoreDataCheck'
+    // 可选真实模型只读回归：gradlew coreCheck -PmodelFile="...\skinned_player_er.json"
+    if (project.hasProperty('modelFile')) {
+        args project.property('modelFile')
+    }
+}
+
+// 让 build 也实际执行核心自检，而不是只有 NO-SOURCE 的 test。
+tasks.named('check').configure {
+    dependsOn 'coreCheck'
+}
+
+tasks.named('processResources', ProcessResources).configure {
+    var replaceProperties = [
+            minecraft_version: minecraft_version, minecraft_version_range: minecraft_version_range,
+            forge_version: forge_version, forge_version_range: forge_version_range,
+            loader_version_range: loader_version_range,
+            mod_id: mod_id, mod_name: mod_name, mod_license: mod_license, mod_version: mod_version,
+            mod_authors: mod_authors, mod_description: mod_description,
+    ]
+    inputs.properties replaceProperties
+
+    filesMatching(['META-INF/mods.toml', 'pack.mcmeta']) {
+        expand replaceProperties + [project: project]
+    }
+}
+
+tasks.named('jar', Jar).configure {
+    manifest {
+        attributes([
+                'Specification-Title'     : mod_id,
+                'Specification-Vendor'    : mod_authors,
+                'Specification-Version'   : '1',
+                'Implementation-Title'    : project.name,
+                'Implementation-Version'  : project.jar.archiveVersion,
+                'Implementation-Vendor'   : mod_authors,
+                'Implementation-Timestamp': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ"),
+                'MixinConfigs'            : 'combatoverhaul.mixins.json',
+        ])
+    }
+
+    finalizedBy 'reobfJar'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}

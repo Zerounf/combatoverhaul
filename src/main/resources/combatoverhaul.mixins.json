@@ -1,0 +1,15 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.yourname.combatoverhaul.mixin.client",
+  "compatibilityLevel": "JAVA_17",
+  "refmap": "combatoverhaul.refmap.json",
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "client": [
+    "LivingEntityRendererMixin",
+    "BedrockModelRenderMixin",
+    "PlayerRendererMixin"
+  ]
+}
