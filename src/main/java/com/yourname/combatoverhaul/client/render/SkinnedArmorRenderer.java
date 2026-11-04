@@ -306,7 +306,14 @@ public final class SkinnedArmorRenderer {
                 }
             }
             alignToSkeleton(model.skinnedMesh, skeleton, armor.getEquipmentSlot());
-            classifySourceParts(model.skinnedMesh, skeleton);
+            // 显式 source_map 是作者语义，不能被“最近关节”覆盖。
+            // 之前 body 被最近点分类成 f_102808_（head），导致胸甲跟着头转。
+            if (model.sourceMap.isEmpty()) {
+                classifySourceParts(model.skinnedMesh, skeleton);
+            } else {
+                CombatOverhaulMod.LOGGER.info("[ArmorRender] source map kept {}",
+                        model.sourceMap);
+            }
             SkinWeightGenerator.Result bind = SkinWeightGenerator.bindToSkeleton(
                     model.skinnedMesh, skeleton);
             CombatOverhaulMod.LOGGER.info("[ArmorRender] bind ok={} verts={} error={}",
