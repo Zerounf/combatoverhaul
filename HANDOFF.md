@@ -1,8 +1,8 @@
 # CombatOverhaul 交接文档
 
-最后更新：2026-11-03 20:15（Asia/Shanghai）
+最后更新：2026-11-04 22:08（Asia/Shanghai）
 工程根目录：`C:\Users\Zero\Desktop\more_damage\combatoverhaul`
-当前构建：`build/libs/combatoverhaul-1.0.0.jar`，566,206 bytes，2026-11-03 20:15:17
+当前构建：`build/libs/combatoverhaul-1.0.0.jar`，566,101 bytes，2026-11-04 22:08:33
 当前自检：`gradlew coreCheck --offline` PASS（默认 + ER + 原生 player/Alex + 多段比例切分 + source_bones + bind_bones + 双层皮肤切割 + 显式跟随映射 + 接缝柔化 + 玩家渲染回接）
 部署状态：已同步到 `E:\.minecraft\versions\DLC测试\mods\` 与 `prod_run\mods\`（SHA-256 一致）
 
@@ -519,10 +519,10 @@ tools/draw_skeleton.py
 
 ### 6.3 验证证据
 
-已实际编译（2026-11-03 20:15，完整 build）：
+已实际编译（2026-11-04 22:08，完整 build）：
 
 ```text
-BUILD SUCCESSFUL in 15s
+BUILD SUCCESSFUL in 18s
 > Task :coreCheck
 CoreDataCheck PASS
 > Task :test

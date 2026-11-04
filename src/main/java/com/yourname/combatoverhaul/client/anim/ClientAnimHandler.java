@@ -579,10 +579,6 @@ public final class ClientAnimHandler {
                 || pose.entityId.equals("combatoverhaul:skinned_player_er"))) {
             applySoftAggregate(pose, parts);
         }
-        com.yourname.combatoverhaul.CombatOverhaulMod.LOGGER.info(
-                "[AnimApply] entity={} poseBones={} parts={} firstBone={}",
-                entity.getId(), pose.bones.size(), parts.size(),
-                pose.bones.isEmpty() ? "-" : pose.bones.get(0).name);
         syncHierarchy(pose, delegate, parts);
         // 追踪：动作带 track_pitch 标签时，按视线俯仰角（钳制 ±maxPitchOffset）叠加俯仰偏移
         State trackState;
