@@ -129,22 +129,6 @@ public final class HumanoidMeshRenderer {
         }
     }
 
-    public static void render(GuiGraphics g, HumanoidModel<?> model, ResourceLocation texture,
-                              double cx, double cy, double scale) {
-        render(g, model, texture, cx, cy, scale, 0f, 0f);
-    }
-
-    public static void render(GuiGraphics g, HumanoidModel<?> model, ResourceLocation texture,
-                              double cx, double cy, double scale,
-                              float yawDeg, float pitchDeg) {
-        if (model == null || texture == null) {
-            return;
-        }
-        Capture cap = new Capture(texture);
-        capture(model, new PoseStack(), cap);
-        draw(g, cap.out, cx, cy, scale, yawDeg, pitchDeg);
-    }
-
     public static void render(GuiGraphics g, List<Layer> layers,
                               double cx, double cy, double scale,
                               float yawDeg, float pitchDeg) {

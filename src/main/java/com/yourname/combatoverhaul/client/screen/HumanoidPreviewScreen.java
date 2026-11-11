@@ -1,28 +1,17 @@
 package com.yourname.combatoverhaul.client.screen;
 
-import com.mojang.blaze3d.platform.Lighting;
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.VertexConsumer;
-import com.mojang.math.Axis;
 import com.yourname.combatoverhaul.client.anim.ClientAnimHandler;
 import com.yourname.combatoverhaul.client.model.ParsedBone;
-import com.yourname.combatoverhaul.client.render.HumanoidMeshRenderer;
-import com.yourname.combatoverhaul.client.render.ModelPreviewRenderer;
 import com.yourname.combatoverhaul.client.model.ParsedModel;
+import com.yourname.combatoverhaul.client.render.HumanoidMeshRenderer;
 import com.yourname.combatoverhaul.combat.ActionCache;
 import com.yourname.combatoverhaul.store.ActionStore;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.client.model.PlayerModel;
 import net.minecraft.client.model.geom.ModelLayers;
-import net.minecraft.client.renderer.LightTexture;
-import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderType;
-import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
@@ -42,9 +31,7 @@ public final class HumanoidPreviewScreen extends Screen {
     private final net.minecraft.client.model.HumanoidArmorModel<Player> armorOuter;
     private final net.minecraft.client.model.HumanoidArmorModel<Player> armorInner;
     private final ResourceLocation skin;
-    private final ModelPreviewRenderer preview = new ModelPreviewRenderer();
     private ParsedModel poseModel;
-    private ParsedModel armorModel;
     private int actionIndex = -1;
     private float tick;
     private boolean playing = true;
@@ -82,16 +69,6 @@ public final class HumanoidPreviewScreen extends Screen {
         actions.addAll(ActionStore.load("minecraft", modelPath, false));
         ActionCache.Entry e = ActionCache.get(ActionCache.keyFor("minecraft", modelPath, false));
         poseModel = e == null ? null : e.model;
-        if (poseModel != null) {
-            preview.skinningEnabled = poseModel.skinnedMesh != null;
-            try {
-                armorModel = ParsedModel.parse(poseModel.toJson());
-                armorModel.skinnedMesh = null;
-                armorModel.textureSpec = "minecraft:textures/models/armor/diamond_layer_1.png";
-                armorModel.resolvedTexture = new ResourceLocation(armorModel.textureSpec);
-            } catch (RuntimeException ignored) {
-            }
-        }
     }
 
     @Override
@@ -118,10 +95,6 @@ public final class HumanoidPreviewScreen extends Screen {
                 .bounds(bx + (rw - 8) / 2 + 2, 50, (rw - 8) / 2, 18).build());
         addRenderableWidget(Button.builder(Component.literal("关闭"), b -> onClose())
                 .bounds(bx, height - 26, rw - 6, 20).build());
-        if (poseModel != null) {
-            preview.fitView(poseModel, listW + 6, 34,
-                    width - Math.max(112, Math.min(180, width / 3)) + 2, height - 36);
-        }
     }
 
     private static String onOff(boolean b) {
@@ -154,9 +127,6 @@ public final class HumanoidPreviewScreen extends Screen {
                 ? actions.get(actionIndex) : null;
         if (action != null) {
             ActionStore.apply(actions, actionIndex, tick, poseModel);
-            if (armorModel != null) {
-                ActionStore.apply(actions, actionIndex, tick, armorModel);
-            }
         }
         if (action == null) {
             return;
@@ -268,46 +238,6 @@ public final class HumanoidPreviewScreen extends Screen {
             g.drawString(font, actions.get(actionIndex).name, listW + 8, height - 32, 0xFFFFFFFF, false);
         }
         super.render(g, mouseX, mouseY, partialTick);
-    }
-
-    private void syncArmorModelVisibility() {
-        if (armorModel == null) {
-            return;
-        }
-        for (ParsedBone b : armorModel.bones) {
-            b.visible = false;
-        }
-        if (helmet) {
-            show("head");
-            show("hat");
-        }
-        if (chest) {
-            show("body");
-            show("right_arm");
-            show("left_arm");
-        }
-        if (legs) {
-            show("right_leg");
-            show("left_leg");
-        }
-        if (boots) {
-            show("right_leg");
-            show("left_leg");
-        }
-    }
-
-    private void show(String semantic) {
-        ParsedBone b = armorModel == null ? null : armorModel.findBone(semantic);
-        if (b != null) {
-            showTree(b);
-        }
-    }
-
-    private static void showTree(ParsedBone bone) {
-        bone.visible = true;
-        for (ParsedBone child : bone.children) {
-            showTree(child);
-        }
     }
 
     private void syncArmorVisibility() {

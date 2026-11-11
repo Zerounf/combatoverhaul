@@ -1,8 +1,8 @@
 # CombatOverhaul 交接文档
 
-最后更新：2026-11-04 22:12（Asia/Shanghai）
+最后更新：2026-11-11 23:36（Asia/Shanghai）
 工程根目录：`C:\Users\Zero\Desktop\more_damage\combatoverhaul`
-当前构建：`build/libs/combatoverhaul-1.0.0.jar`，566,144 bytes，2026-11-04 22:12:25
+当前构建：`build/libs/combatoverhaul-1.0.0.jar`，563,264 bytes，2026-11-11 23:36:37
 当前自检：`gradlew coreCheck --offline` PASS（默认 + ER + 原生 player/Alex + 多段比例切分 + source_bones + bind_bones + 双层皮肤切割 + 显式跟随映射 + 接缝柔化 + 玩家渲染回接）
 部署状态：已同步到 `E:\.minecraft\versions\DLC测试\mods\` 与 `prod_run\mods\`（SHA-256 一致）
 
@@ -82,6 +82,36 @@ StaminaClientState / StaminaHudOverlay / ModMessages$StaminaSyncPacket
 WeaponBlockClientHandler / ShieldBlockHandler / ParCoolBridge
 ```
 编译依赖 `combatoverhaul/libs/damageoverhaul-1.0.0.jar` 仍是旧 425,490 bytes，尚未包含这些 API；接战斗姿态前必须先更新该 jar。客户端 blocking 状态是否由 `BlockStatePacket` 维护还需确认，不能假设 `WeaponBlockHandler.isBlocking` 可直接在客户端动画层调用。
+
+**2026-11-11 重复/死代码清理**：
+```text
+删除 client/bedrock/BedrockGeometryLoader.java
+  - 只是 GeckoModelLoader.convert + BedrockGeometryAdapter 的空壳包装，全项目无引用
+
+HumanoidMeshRenderer
+  - 删除未使用的单 model 5/6 参数 render 重载；只保留 layared list 渲染
+
+HumanoidPreviewScreen
+  - 删除旧的 ParsedModel armorModel 代理预览、preview.fitView、syncArmorModelVisibility/showTree
+  - 现在只保留：真 PlayerModel + 真 HumanoidArmorModel 外层/内层
+```
+代码重复审计结果（待后续重构，不一次性改）：
+```text
+ActionBindingScreen / WeaponGrantScreen
+  - mouseClicked、refilter 等物品选择逻辑逐行相同
+
+ModelEditorScreen / RigEditorScreen
+  - drawLine、拖拽/循环块重复
+
+ClientAnimHandler / ModelEditorScreen
+  - 头部姿态/聚合片段重复
+
+GeoImporter / AnimImporter
+  - 文件导入/保存 boilerplate 重复
+
+HumanoidPreviewScreen / SkinnedArmorRenderer
+  - 盔甲槽可见性 + outer/inner 选择重复
+```
 
 **动画缺失回退原版**：标准人形查看器先调用 `humanoid.setupAnim(player, walkAnimation.position(), speed(), ...)` 建立原版基础姿态；自定义 action 只有实际包含该骨骼通道时才覆盖。没有行走/格挡片段时，骨架继续使用原版走路/待机，不会被清成 rest pose。实机模型仍可见，但需更新布局/盔甲几何。
 
@@ -521,10 +551,10 @@ tools/draw_skeleton.py
 
 ### 6.3 验证证据
 
-已实际编译（2026-11-04 22:12，完整 build）：
+已实际编译（2026-11-11 23:36，完整 build）：
 
 ```text
-BUILD SUCCESSFUL in 18s
+BUILD SUCCESSFUL in 20s
 > Task :coreCheck
 CoreDataCheck PASS
 > Task :test
