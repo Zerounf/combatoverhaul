@@ -789,27 +789,7 @@ public final class ClientAnimHandler {
     }
 
     public static boolean isSlimPlayer(net.minecraft.world.entity.LivingEntity entity) {
-        try {
-            var renderer = net.minecraft.client.Minecraft.getInstance()
-                    .getEntityRenderDispatcher().getRenderer(entity);
-            if (renderer instanceof net.minecraft.client.renderer.entity.LivingEntityRenderer<?, ?> ler
-                    && ler.getModel() instanceof net.minecraft.client.model.HumanoidModel<?> hm
-                    && hm.rightArm != null) {
-                for (java.lang.reflect.Field f : net.minecraft.client.model.geom.ModelPart.class.getDeclaredFields()) {
-                    if (!java.util.List.class.isAssignableFrom(f.getType())) {
-                        continue;
-                    }
-                    f.setAccessible(true);
-                    Object value = f.get(hm.rightArm);
-                    if (value instanceof java.util.List<?> list && !list.isEmpty()
-                            && list.get(0) instanceof net.minecraft.client.model.geom.ModelPart.Cube cube) {
-                        return cube.maxX - cube.minX < 3.5f;
-                    }
-                }
-            }
-        } catch (ReflectiveOperationException | RuntimeException ignored) {
-        }
-        return false;
+        return com.yourname.combatoverhaul.client.model.PlayerModelSlim.isSlim(entity);
     }
 
     private static void resetAnims(ParsedModel model) {

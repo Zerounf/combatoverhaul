@@ -196,29 +196,8 @@ public class ModelEditorScreen extends Screen {
     /** 当前玩家皮肤模型是否为 slim/Alex：直接看渲染器右臂立方体宽度（3px vs 4px）。 */
     private boolean currentPlayerSlim() {
         net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
-        if (mc.player == null) {
-            return false;
-        }
-        try {
-            var renderer = mc.getEntityRenderDispatcher().getRenderer(mc.player);
-            if (renderer instanceof net.minecraft.client.renderer.entity.LivingEntityRenderer<?, ?> ler
-                    && ler.getModel() instanceof net.minecraft.client.model.HumanoidModel<?> hm
-                    && hm.rightArm != null) {
-                for (java.lang.reflect.Field f : net.minecraft.client.model.geom.ModelPart.class.getDeclaredFields()) {
-                    if (!java.util.List.class.isAssignableFrom(f.getType())) {
-                        continue;
-                    }
-                    f.setAccessible(true);
-                    Object value = f.get(hm.rightArm);
-                    if (value instanceof java.util.List<?> list && !list.isEmpty()
-                            && list.get(0) instanceof net.minecraft.client.model.geom.ModelPart.Cube cube) {
-                        return cube.maxX - cube.minX < 3.5f;
-                    }
-                }
-            }
-        } catch (ReflectiveOperationException | RuntimeException ignored) {
-        }
-        return false;
+        return mc.player != null
+                && com.yourname.combatoverhaul.client.model.PlayerModelSlim.isSlim(mc.player);
     }
 
     private void loadAll() {
