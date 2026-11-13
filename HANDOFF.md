@@ -1,8 +1,8 @@
 # CombatOverhaul 交接文档
 
-最后更新：2026-11-11 23:36（Asia/Shanghai）
+最后更新：2026-11-13 16:56（Asia/Shanghai）
 工程根目录：`C:\Users\Zero\Desktop\more_damage\combatoverhaul`
-当前构建：`build/libs/combatoverhaul-1.0.0.jar`，563,264 bytes，2026-11-11 23:36:37
+当前构建：`build/libs/combatoverhaul-1.0.0.jar`，564,559 bytes，2026-11-13 16:56:13
 当前自检：`gradlew coreCheck --offline` PASS（默认 + ER + 原生 player/Alex + 多段比例切分 + source_bones + bind_bones + 双层皮肤切割 + 显式跟随映射 + 接缝柔化 + 玩家渲染回接）
 部署状态：已同步到 `E:\.minecraft\versions\DLC测试\mods\` 与 `prod_run\mods\`（SHA-256 一致）
 
@@ -112,6 +112,15 @@ GeoImporter / AnimImporter
 HumanoidPreviewScreen / SkinnedArmorRenderer
   - 盔甲槽可见性 + outer/inner 选择重复
 ```
+
+**物品选择列表去重**：新增 `client/screen/ui/IdListState`，统一：
+```text
+allIds / filtered
+filter 搜索
+scroll 滚动与 clamp
+indexAt 行命中
+```
+`ActionBindingScreen` 与 `WeaponGrantScreen` 已改用该状态，删除各自重复的 `refilter / clampScroll / 手写行索引`。两屏的差异逻辑（页签、writeAll、武器模型生成、保存回包）保持不变。构建 564,559 bytes。
 
 **动画缺失回退原版**：标准人形查看器先调用 `humanoid.setupAnim(player, walkAnimation.position(), speed(), ...)` 建立原版基础姿态；自定义 action 只有实际包含该骨骼通道时才覆盖。没有行走/格挡片段时，骨架继续使用原版走路/待机，不会被清成 rest pose。实机模型仍可见，但需更新布局/盔甲几何。
 
@@ -551,10 +560,10 @@ tools/draw_skeleton.py
 
 ### 6.3 验证证据
 
-已实际编译（2026-11-11 23:36，完整 build）：
+已实际编译（2026-11-13 16:56，完整 build）：
 
 ```text
-BUILD SUCCESSFUL in 20s
+BUILD SUCCESSFUL in 30s
 > Task :coreCheck
 CoreDataCheck PASS
 > Task :test

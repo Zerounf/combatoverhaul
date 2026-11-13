@@ -1,5 +1,6 @@
 package com.yourname.combatoverhaul.client.screen;
 
+import com.yourname.combatoverhaul.client.screen.ui.IdListState;
 import com.yourname.combatoverhaul.combat.ActionCache;
 import com.yourname.combatoverhaul.store.ActionStore;
 import net.minecraft.client.Minecraft;
@@ -12,7 +13,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -40,14 +40,8 @@ public class ActionBindingScreen extends Screen {
 
     private int tab = 0; // 0=武器 1=生物
     private EditBox searchBox;
-    private String filter = "";
-    private int scroll = 0;
+    private final IdListState list = new IdListState();
     private String status = "";
-
-    /** 当前页签的全部可选项（缓存，按 id 排序） */
-    private List<String> allIds = new ArrayList<>();
-    /** 过滤后的可见项 */
-    private final List<String> filtered = new ArrayList<>();
 
     public ActionBindingScreen(Screen returnParent, String modid, String path, boolean weapon, int actionIndex) {
         super(Component.translatable("gui.combatoverhaul.binding_title", modid, path));
@@ -106,11 +100,10 @@ public class ActionBindingScreen extends Screen {
         searchBox = new EditBox(this.font, 10, 68, 180, 14,
                 Component.translatable("gui.combatoverhaul.binding_search"));
         searchBox.setMaxLength(64);
-        searchBox.setValue(filter);
+        searchBox.setValue(list.filter);
         searchBox.setResponder(s -> {
-            filter = s;
-            scroll = 0;
-            refilter();
+            list.setFilter(s);
+            list.setVisibleRows(visibleRows());
         });
         this.addRenderableWidget(searchBox);
         this.addRenderableWidget(Button.builder(Component.translatable("gui.combatoverhaul.check_filtered"),
@@ -120,23 +113,18 @@ public class ActionBindingScreen extends Screen {
     }
 
     private void rebuildIds() {
-        allIds = new ArrayList<>();
+        List<String> ids = new ArrayList<>();
         var registry = tab == 0 ? BuiltInRegistries.ITEM : BuiltInRegistries.ENTITY_TYPE;
         for (ResourceLocation id : registry.keySet()) {
-            allIds.add(id.toString());
+            ids.add(id.toString());
         }
-        allIds.sort(Comparator.naturalOrder());
+        list.setVisibleRows(visibleRows());
+        list.setAll(ids);
     }
 
     private void refilter() {
-        filtered.clear();
-        String f = filter == null ? "" : filter.trim().toLowerCase();
-        for (String id : allIds) {
-            if (f.isEmpty() || id.toLowerCase().contains(f)) {
-                filtered.add(id);
-            }
-        }
-        clampScroll();
+        list.setVisibleRows(visibleRows());
+        list.refilter();
     }
 
     private void switchTab(int t) {
@@ -144,9 +132,8 @@ public class ActionBindingScreen extends Screen {
             return;
         }
         tab = t;
-        scroll = 0;
+        list.scroll = 0;
         rebuildIds();
-        refilter();
     }
 
     private void cycleAction(int d) {
@@ -154,7 +141,7 @@ public class ActionBindingScreen extends Screen {
             return;
         }
         actionIndex = Math.floorMod(actionIndex + d, actions.size());
-        scroll = 0;
+        list.scroll = 0;
         refilter();
     }
 
@@ -163,7 +150,7 @@ public class ActionBindingScreen extends Screen {
         if (bound == null) {
             return;
         }
-        for (String id : filtered) {
+        for (String id : list.filtered) {
             if (check && !bound.contains(id)) {
                 bound.add(id);
             } else if (!check) {
@@ -184,10 +171,6 @@ public class ActionBindingScreen extends Screen {
 
     private int visibleRows() {
         return Math.max(1, (this.height - LIST_TOP - 30) / ROW_H);
-    }
-
-    private void clampScroll() {
-        scroll = Math.max(0, Math.min(scroll, Math.max(0, filtered.size() - visibleRows())));
     }
 
     private boolean saveAndInvalidate() {
@@ -214,17 +197,16 @@ public class ActionBindingScreen extends Screen {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
-        scroll -= (int) (delta * 3);
-        clampScroll();
+        list.scrollBy(delta, visibleRows());
         return true;
     }
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (mouseX >= LIST_X && mouseX <= this.width - 10 && mouseY >= LIST_TOP) {
-            int idx = scroll + (int) ((mouseY - LIST_TOP) / ROW_H);
-            if (idx >= 0 && idx < filtered.size() && idx < scroll + visibleRows()) {
-                toggle(filtered.get(idx));
+            int idx = list.indexAt(mouseY, LIST_TOP);
+            if (idx >= 0 && idx < list.filtered.size() && idx < list.scroll + visibleRows()) {
+                toggle(list.filtered.get(idx));
                 return true;
             }
         }
@@ -245,13 +227,13 @@ public class ActionBindingScreen extends Screen {
         String tabName = Component.translatable(tab == 0
                 ? "gui.combatoverhaul.tab_weapons" : "gui.combatoverhaul.tab_entities").getString();
         g.drawString(this.font, Component.translatable("gui.combatoverhaul.binding_count",
-                bound == null ? 0 : bound.size(), filtered.size()), 382, 71, 0x909090);
+                bound == null ? 0 : bound.size(), list.filtered.size()), 382, 71, 0x909090);
         g.drawString(this.font, "§8" + tabName, 162, 50, 0xFFFFFF);
 
         // 列表
         int rows = visibleRows();
-        for (int i = 0; i < rows && scroll + i < filtered.size(); i++) {
-            String id = filtered.get(scroll + i);
+        for (int i = 0; i < rows && list.scroll + i < list.filtered.size(); i++) {
+            String id = list.filtered.get(list.scroll + i);
             boolean checked = bound != null && bound.contains(id);
             int y = LIST_TOP + i * ROW_H;
             if (mouseX >= LIST_X && mouseX <= this.width - 10 && mouseY >= y && mouseY < y + ROW_H) {
@@ -260,7 +242,7 @@ public class ActionBindingScreen extends Screen {
             g.drawString(this.font, (checked ? "§a[✓] §f" : "§7[ ] ") + id, LIST_X + 2, y + 2,
                     checked ? 0x80FF80 : 0xC0C0C0);
         }
-        if (filtered.isEmpty()) {
+        if (list.filtered.isEmpty()) {
             g.drawString(this.font, "§7-", LIST_X + 2, LIST_TOP + 2, 0x808080);
         }
 

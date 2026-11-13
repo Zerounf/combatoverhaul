@@ -1,6 +1,7 @@
 package com.yourname.combatoverhaul.client.screen;
 
 import com.yourname.combatoverhaul.client.model.WeaponModelGenerator;
+import com.yourname.combatoverhaul.client.screen.ui.IdListState;
 import com.yourname.combatoverhaul.combat.ActionCache;
 import com.yourname.combatoverhaul.store.ActionStore;
 import com.yourname.combatoverhaul.store.ModelStore;
@@ -16,7 +17,6 @@ import net.minecraft.resources.ResourceLocation;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -51,18 +51,13 @@ public class WeaponGrantScreen extends Screen {
     private boolean writeAll = false;
     private Button btnWriteAll;
     private EditBox searchBox;
-    private String filter = "";
-    private int scroll = 0;
+    private final IdListState list = new IdListState();
     private String status = "";
 
-    /** 全部可选项：已有模型配置的武器 + 全部注册物品（去重排序） */
-    private List<String> allIds = new ArrayList<>();
     /** 已有模型文件的武器 id（●标记） */
     private final Set<String> withModel = new HashSet<>();
     /** 授权时自动生成模型失败的物品 id（标红） */
     private final Set<String> failed = new HashSet<>();
-    /** 过滤后的可见项 */
-    private final List<String> filtered = new ArrayList<>();
 
     public WeaponGrantScreen(Screen combatParent, String modid, String path, int actionIndex) {
         super(Component.translatable("gui.combatoverhaul.grant_title", modid, path));
@@ -127,11 +122,10 @@ public class WeaponGrantScreen extends Screen {
         searchBox = new EditBox(this.font, 10, 84, 180, 14,
                 Component.translatable("gui.combatoverhaul.grant_search"));
         searchBox.setMaxLength(64);
-        searchBox.setValue(filter);
+        searchBox.setValue(list.filter);
         searchBox.setResponder(s -> {
-            filter = s;
-            scroll = 0;
-            refilter();
+            list.setFilter(s);
+            list.setVisibleRows(visibleRows());
         });
         this.addRenderableWidget(searchBox);
         this.addRenderableWidget(Button.builder(Component.translatable("gui.combatoverhaul.check_filtered"),
@@ -143,7 +137,7 @@ public class WeaponGrantScreen extends Screen {
     /** 选项 = config 武器目录已有模型（排除 whitebox 工具目录）+ 全部注册物品 */
     private void rebuildIds() {
         withModel.clear();
-        allIds = new ArrayList<>();
+        List<String> ids = new ArrayList<>();
         try {
             Path root = ModelStore.weaponsRoot();
             if (Files.isDirectory(root)) {
@@ -161,7 +155,7 @@ public class WeaponGrantScreen extends Screen {
                                 }
                                 String id = ns + ":" + n.substring(0, n.length() - 5);
                                 if (withModel.add(id)) {
-                                    allIds.add(id);
+                                    ids.add(id);
                                 }
                             }
                         }
@@ -173,21 +167,16 @@ public class WeaponGrantScreen extends Screen {
         for (ResourceLocation id : BuiltInRegistries.ITEM.keySet()) {
             String s = id.toString();
             if (withModel.add(s)) {
-                allIds.add(s);
+                ids.add(s);
             }
         }
-        allIds.sort(Comparator.naturalOrder());
+        list.setVisibleRows(visibleRows());
+        list.setAll(ids);
     }
 
     private void refilter() {
-        filtered.clear();
-        String f = filter == null ? "" : filter.trim().toLowerCase();
-        for (String id : allIds) {
-            if (f.isEmpty() || id.toLowerCase().contains(f)) {
-                filtered.add(id);
-            }
-        }
-        clampScroll();
+        list.setVisibleRows(visibleRows());
+        list.refilter();
     }
 
     private void refreshWriteAll() {
@@ -202,7 +191,7 @@ public class WeaponGrantScreen extends Screen {
             return;
         }
         actionIndex = Math.floorMod(actionIndex + d, actions.size());
-        scroll = 0;
+        list.scroll = 0;
         refilter();
     }
 
@@ -246,7 +235,7 @@ public class WeaponGrantScreen extends Screen {
         }
         int generated = 0;
         int genFailed = 0;
-        for (String id : filtered) {
+        for (String id : list.filtered) {
             if (check) {
                 if (checked(id)) {
                     continue;
@@ -283,10 +272,6 @@ public class WeaponGrantScreen extends Screen {
         return Math.max(1, (this.height - LIST_TOP - 30) / ROW_H);
     }
 
-    private void clampScroll() {
-        scroll = Math.max(0, Math.min(scroll, Math.max(0, filtered.size() - visibleRows())));
-    }
-
     private boolean saveAndInvalidate() {
         if (ActionStore.save(modid, path, true, actions)) {
             ActionCache.invalidate(modid, path, true);
@@ -312,17 +297,16 @@ public class WeaponGrantScreen extends Screen {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
-        scroll -= (int) (delta * 3);
-        clampScroll();
+        list.scrollBy(delta, visibleRows());
         return true;
     }
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (mouseX >= LIST_X && mouseX <= this.width - 10 && mouseY >= LIST_TOP) {
-            int idx = scroll + (int) ((mouseY - LIST_TOP) / ROW_H);
-            if (idx >= 0 && idx < filtered.size() && idx < scroll + visibleRows()) {
-                toggle(filtered.get(idx));
+            int idx = list.indexAt(mouseY, LIST_TOP);
+            if (idx >= 0 && idx < list.filtered.size() && idx < list.scroll + visibleRows()) {
+                toggle(list.filtered.get(idx));
                 return true;
             }
         }
@@ -338,7 +322,7 @@ public class WeaponGrantScreen extends Screen {
         g.drawString(this.font, a == null ? Component.translatable("gui.combatoverhaul.no_action")
                 : Component.translatable("gui.combatoverhaul.combat_action", a.name), 76, 28, 0xA0A0FF);
         g.drawString(this.font, Component.translatable("gui.combatoverhaul.grant_count",
-                checkedCount(), filtered.size()), 196, 28, 0x909090);
+                checkedCount(), list.filtered.size()), 196, 28, 0x909090);
 
         // 图例
         g.drawString(this.font, Component.translatable("gui.combatoverhaul.grant_legend"),
@@ -346,8 +330,8 @@ public class WeaponGrantScreen extends Screen {
 
         // 列表
         int rows = visibleRows();
-        for (int i = 0; i < rows && scroll + i < filtered.size(); i++) {
-            String id = filtered.get(scroll + i);
+        for (int i = 0; i < rows && list.scroll + i < list.filtered.size(); i++) {
+            String id = list.filtered.get(list.scroll + i);
             boolean ck = checked(id);
             boolean bad = failed.contains(id);
             boolean has = withModel.contains(id);
@@ -360,7 +344,7 @@ public class WeaponGrantScreen extends Screen {
             g.drawString(this.font, (ck ? "§a[✓] §f" : "§7[ ] ") + mark + " " + id,
                     LIST_X + 2, y + 2, color);
         }
-        if (filtered.isEmpty()) {
+        if (list.filtered.isEmpty()) {
             g.drawString(this.font, "§7-", LIST_X + 2, LIST_TOP + 2, 0x808080);
         }
 
