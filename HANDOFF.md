@@ -1,8 +1,8 @@
 # CombatOverhaul 交接文档
 
-最后更新：2026-11-13 17:02（Asia/Shanghai）
+最后更新：2026-11-13 17:03（Asia/Shanghai）
 工程根目录：`C:\Users\Zero\Desktop\more_damage\combatoverhaul`
-当前构建：`build/libs/combatoverhaul-1.0.0.jar`，565,067 bytes，2026-11-13 17:02:27
+当前构建：`build/libs/combatoverhaul-1.0.0.jar`，565,538 bytes，2026-11-13 17:03:36
 当前自检：`gradlew coreCheck --offline` PASS（默认 + ER + 原生 player/Alex + 多段比例切分 + source_bones + bind_bones + 双层皮肤切割 + 显式跟随映射 + 接缝柔化 + 玩家渲染回接）
 部署状态：已同步到 `E:\.minecraft\versions\DLC测试\mods\` 与 `prod_run\mods\`（SHA-256 一致）
 
@@ -125,6 +125,8 @@ indexAt 行命中
 **编辑器绘制去重**：新增 `client/screen/ui/EditorDraw`，统一 `line`（Bresenham）与 `vline`。`ModelEditorScreen`、`RigEditorScreen`、`HumanoidPreviewScreen` 删除各自的 `drawLine` 实现并改用 `EditorDraw`。构建 564,859 bytes。
 
 **玩家 slim 检测去重**：新增 `client/model/PlayerModelSlim`，把 `ClientAnimHandler.isSlimPlayer` 与 `ModelEditorScreen.currentPlayerSlim` 中两份完全相同的 ModelPart 反射检测合并。构建 565,067 bytes。
+
+**编辑器数值解析去重**：新增 `client/screen/ui/EditorParse`，把 `ModelEditorScreen` 与 `CompositeActionScreen` 完全相同的 `parse(text, def, min, max)` 合并；两边删掉私有实现。构建 565,538 bytes。
 
 **动画缺失回退原版**：标准人形查看器先调用 `humanoid.setupAnim(player, walkAnimation.position(), speed(), ...)` 建立原版基础姿态；自定义 action 只有实际包含该骨骼通道时才覆盖。没有行走/格挡片段时，骨架继续使用原版走路/待机，不会被清成 rest pose。实机模型仍可见，但需更新布局/盔甲几何。
 
@@ -564,10 +566,10 @@ tools/draw_skeleton.py
 
 ### 6.3 验证证据
 
-已实际编译（2026-11-13 17:02，完整 build）：
+已实际编译（2026-11-13 17:03，完整 build）：
 
 ```text
-BUILD SUCCESSFUL in 17s
+BUILD SUCCESSFUL in 24s
 > Task :coreCheck
 CoreDataCheck PASS
 > Task :test

@@ -1,6 +1,7 @@
 package com.yourname.combatoverhaul.client.screen;
 
 import com.yourname.combatoverhaul.store.ActionStore;
+import static com.yourname.combatoverhaul.client.screen.ui.EditorParse.parse;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
@@ -137,14 +138,6 @@ public final class CompositeActionScreen extends Screen {
         ActionStore.Segment s = segment();
         if (s != null) {
             edit.apply(s);
-        }
-    }
-
-    private static float parse(String text, float def, float min, float max) {
-        try {
-            return Math.max(min, Math.min(max, Float.parseFloat(text.trim())));
-        } catch (RuntimeException e) {
-            return def;
         }
     }
 

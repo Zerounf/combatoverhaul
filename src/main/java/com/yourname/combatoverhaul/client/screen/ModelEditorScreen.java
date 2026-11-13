@@ -11,6 +11,7 @@ import com.yourname.combatoverhaul.rig.RigJointSet;
 import com.yourname.combatoverhaul.client.render.ModelPreviewRenderer;
 import com.yourname.combatoverhaul.client.screen.ui.EditorButton;
 import com.yourname.combatoverhaul.client.screen.ui.EditorDraw;
+import static com.yourname.combatoverhaul.client.screen.ui.EditorParse.parse;
 import com.yourname.combatoverhaul.client.skinned.SkinWeightGenerator;
 import com.yourname.combatoverhaul.client.screen.ui.EditorTheme;
 import com.yourname.combatoverhaul.store.ActionStore;
@@ -726,14 +727,6 @@ public class ModelEditorScreen extends Screen {
         b.setMaxLength(12);
         this.addRenderableWidget(b);
         return b;
-    }
-
-    private static float parse(String text, float def, float min, float max) {
-        try {
-            return Math.max(min, Math.min(max, Float.parseFloat(text.trim())));
-        } catch (RuntimeException e) {
-            return def;
-        }
     }
 
     private void withInspector(java.util.function.Consumer<ActionStore.Action> edit) {
