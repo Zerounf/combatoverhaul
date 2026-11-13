@@ -327,7 +327,7 @@ public final class SkinnedArmorRenderer {
             out.model = model;
             out.mesh = model.skinnedMesh;
             out.boundSkeleton = skeleton;
-            out.texture = textureOf(model, armor);
+            out.texture = textureOf(model, armor, armor.getEquipmentSlot());
             CombatOverhaulMod.LOGGER.info("[CombatOverhaul] 自定义盔甲已蒙皮 {} vertices={}",
                     id, out.mesh.vertices.size());
             return out;
@@ -346,19 +346,14 @@ public final class SkinnedArmorRenderer {
         }
     }
 
-    private static ResourceLocation textureOf(ParsedModel model, ArmorItem armor) {
+    private static ResourceLocation textureOf(ParsedModel model, ArmorItem armor, EquipmentSlot slot) {
         if (model.textureSpec != null && !model.textureSpec.isBlank()) {
             try {
                 return new ResourceLocation(model.textureSpec);
             } catch (RuntimeException ignored) {
             }
         }
-        String material = armor.getMaterial().getName();
-        ResourceLocation asset = material.contains(":")
-                ? new ResourceLocation(material)
-                : new ResourceLocation("minecraft", material);
-        return new ResourceLocation(asset.getNamespace(),
-                "textures/models/armor/" + asset.getPath() + "_layer_1.png");
+        return ArmorTextures.of(armor, slot);
     }
 
     private static void renderVanillaFallback(Player player, PoseStack pose,
@@ -405,13 +400,7 @@ public final class SkinnedArmorRenderer {
             default -> {
             }
         }
-        String material = armor.getMaterial().getName();
-        ResourceLocation asset = material.contains(":")
-                ? new ResourceLocation(material)
-                : new ResourceLocation("minecraft", material);
-        String layer = slot == EquipmentSlot.LEGS ? "layer_2" : "layer_1";
-        ResourceLocation texture = new ResourceLocation(asset.getNamespace(),
-                "textures/models/armor/" + asset.getPath() + "_" + layer + ".png");
+        ResourceLocation texture = ArmorTextures.of(armor, slot);
         VertexConsumer vc = buffers.getBuffer(RenderType.armorCutoutNoCull(texture));
         model.renderToBuffer(pose, vc, light, OverlayTexture.NO_OVERLAY, 1f, 1f, 1f, 1f);
         pose.popPose();
