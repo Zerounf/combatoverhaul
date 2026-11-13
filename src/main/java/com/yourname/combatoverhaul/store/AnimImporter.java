@@ -6,10 +6,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.yourname.combatoverhaul.CombatOverhaulMod;
 import com.yourname.combatoverhaul.combat.ActionCache;
-import net.minecraftforge.fml.loading.FMLPaths;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -18,7 +15,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * Blockbench / GeckoLib 动画导入：{@code .animation.json}（Bedrock 动画格式）→ 本模组动作。
@@ -63,26 +59,7 @@ public final class AnimImporter {
 
     /** 列出可导入的动画文件名（*.json，不含子目录）；目录不存在时自动创建 */
     public static List<String> listFiles() {
-        Path dir = animDir();
-        try {
-            // 目录被用户删掉时自动重建，避免“找不到入口”
-            Files.createDirectories(dir);
-        } catch (IOException e) {
-            CombatOverhaulMod.LOGGER.warn("[CombatOverhaul] 无法创建动画目录 {}", dir, e);
-        }
-        if (!Files.isDirectory(dir)) {
-            return List.of();
-        }
-        try (var s = Files.list(dir)) {
-            return s.filter(Files::isRegularFile)
-                    .map(p -> p.getFileName().toString())
-                    .filter(n -> n.toLowerCase().endsWith(".json"))
-                    .sorted()
-                    .collect(Collectors.toList());
-        } catch (IOException e) {
-            CombatOverhaulMod.LOGGER.error("[CombatOverhaul] 读取动画目录失败", e);
-            return List.of();
-        }
+        return ImportIO.listJson(animDir(), "动画");
     }
 
     /**
@@ -127,19 +104,11 @@ public final class AnimImporter {
             r.error = "找不到动画文件: " + fileName + "（应放在 " + animDir() + "）";
             return r;
         }
-        String text;
-        try {
-            text = Files.readString(animFile, StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            r.error = "读取失败: " + e.getMessage();
-            return r;
-        }
-
         JsonObject root;
         try {
-            root = JsonParser.parseString(text).getAsJsonObject();
-        } catch (RuntimeException e) {
-            r.error = "JSON 解析失败: " + e.getMessage();
+            root = ImportIO.readJson(animFile);
+        } catch (Exception e) {
+            r.error = "读取/解析失败: " + e.getMessage();
             return r;
         }
 

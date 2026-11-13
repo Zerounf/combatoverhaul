@@ -6,16 +6,14 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.yourname.combatoverhaul.CombatOverhaulMod;
 import com.yourname.combatoverhaul.combat.ActionCache;
+import com.yourname.combatoverhaul.store.ImportIO;
 import com.yourname.combatoverhaul.store.ModelStore;
 import net.minecraftforge.fml.loading.FMLPaths;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Bedrock .geo.json 几何导入：把 Blockbench/GeckoLib 的 geo 转成现有内部模型文件，
@@ -43,25 +41,7 @@ public final class GeoImporter {
     }
 
     public static List<String> listFiles() {
-        Path dir = geoDir();
-        try {
-            Files.createDirectories(dir);
-        } catch (IOException e) {
-            CombatOverhaulMod.LOGGER.warn("[CombatOverhaul] 无法创建 geo 目录 {}", dir, e);
-        }
-        if (!Files.isDirectory(dir)) {
-            return List.of();
-        }
-        try (var s = Files.list(dir)) {
-            return s.filter(Files::isRegularFile)
-                    .map(p -> p.getFileName().toString())
-                    .filter(n -> n.toLowerCase().endsWith(".json"))
-                    .sorted()
-                    .collect(Collectors.toList());
-        } catch (IOException e) {
-            CombatOverhaulMod.LOGGER.error("[CombatOverhaul] 读取 geo 目录失败", e);
-            return List.of();
-        }
+        return ImportIO.listJson(geoDir(), "geo");
     }
 
     /**
@@ -93,7 +73,7 @@ public final class GeoImporter {
 
         JsonObject geo;
         try {
-            geo = JsonParser.parseString(Files.readString(geoFile, StandardCharsets.UTF_8)).getAsJsonObject();
+            geo = ImportIO.readJson(geoFile);
         } catch (Exception e) {
             r.error = "geo JSON 解析失败: " + e.getMessage();
             return r;
