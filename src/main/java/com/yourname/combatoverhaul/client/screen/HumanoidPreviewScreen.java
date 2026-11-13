@@ -4,6 +4,7 @@ import com.yourname.combatoverhaul.client.anim.ClientAnimHandler;
 import com.yourname.combatoverhaul.client.model.ParsedBone;
 import com.yourname.combatoverhaul.client.model.ParsedModel;
 import com.yourname.combatoverhaul.client.render.HumanoidMeshRenderer;
+import com.yourname.combatoverhaul.client.screen.ui.EditorDraw;
 import com.yourname.combatoverhaul.combat.ActionCache;
 import com.yourname.combatoverhaul.store.ActionStore;
 import net.minecraft.client.Minecraft;
@@ -232,7 +233,7 @@ public final class HumanoidPreviewScreen extends Screen {
                     new ResourceLocation("minecraft:textures/models/armor/diamond_layer_2.png")));
         }
         HumanoidMeshRenderer.render(g, layers, cx, cy, scale, viewYaw, viewPitch);
-        drawLine(g, listW, 0, listW, height, 0xFF3A4250);
+        EditorDraw.vline(g, listW, 0, height, 0xFF3A4250);
         g.drawString(font, "动作 tick: " + (int) tick, listW + 8, height - 18, 0xFF9FA8B8, false);
         if (actionIndex >= 0 && actionIndex < actions.size()) {
             g.drawString(font, actions.get(actionIndex).name, listW + 8, height - 32, 0xFFFFFFFF, false);
@@ -321,10 +322,6 @@ public final class HumanoidPreviewScreen extends Screen {
         viewZoom = Math.max(0.35f, Math.min(3.0f,
                 viewZoom * (float) Math.pow(1.12, Math.signum(delta))));
         return true;
-    }
-
-    private static void drawLine(GuiGraphics g, int x0, int y0, int x1, int y1, int color) {
-        g.fill(x0, y0, x0 + 1, y1, color);
     }
 
     @Override

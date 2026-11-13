@@ -10,6 +10,7 @@ import com.yourname.combatoverhaul.client.model.ParsedModel;
 import com.yourname.combatoverhaul.rig.RigJointSet;
 import com.yourname.combatoverhaul.client.render.ModelPreviewRenderer;
 import com.yourname.combatoverhaul.client.screen.ui.EditorButton;
+import com.yourname.combatoverhaul.client.screen.ui.EditorDraw;
 import com.yourname.combatoverhaul.client.skinned.SkinWeightGenerator;
 import com.yourname.combatoverhaul.client.screen.ui.EditorTheme;
 import com.yourname.combatoverhaul.store.ActionStore;
@@ -2906,7 +2907,7 @@ public class ModelEditorScreen extends Screen {
                 {2, 6}, {3, 7}, {4, 5}, {4, 6}, {5, 7}, {6, 7}
         };
         for (int[] e : edges) {
-            drawLine(g, (int) c[e[0]][0], (int) c[e[0]][1],
+            EditorDraw.line(g, (int) c[e[0]][0], (int) c[e[0]][1],
                     (int) c[e[1]][0], (int) c[e[1]][1], color);
         }
         float[] mid = projectHitboxCorner(h, bm, 1, 1, 1);
@@ -2923,29 +2924,6 @@ public class ModelEditorScreen extends Screen {
                 + fmt(h.size[2]), vx0 + 4, vy0 + 16, 0xFFFFB366, false);
         g.drawString(this.font, "拖动=移动 XY；Ctrl+拖动=移动 Z；Shift=缩放 XY；Shift+Ctrl=缩放 Z",
                 vx0 + 4, vy0 + 28, 0xAAFFB366, false);
-    }
-
-    private static void drawLine(GuiGraphics g, int x0, int y0, int x1, int y1, int color) {
-        int dx = Math.abs(x1 - x0);
-        int dy = -Math.abs(y1 - y0);
-        int sx = x0 < x1 ? 1 : -1;
-        int sy = y0 < y1 ? 1 : -1;
-        int err = dx + dy;
-        while (true) {
-            g.fill(x0, y0, x0 + 1, y0 + 1, color);
-            if (x0 == x1 && y0 == y1) {
-                break;
-            }
-            int e2 = err * 2;
-            if (e2 >= dy) {
-                err += dy;
-                x0 += sx;
-            }
-            if (e2 <= dx) {
-                err += dx;
-                y0 += sy;
-            }
-        }
     }
 
     private float[] hitboxCenterScreen() {

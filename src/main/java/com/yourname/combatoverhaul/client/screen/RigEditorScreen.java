@@ -1,5 +1,6 @@
 package com.yourname.combatoverhaul.client.screen;
 
+import com.yourname.combatoverhaul.client.screen.ui.EditorDraw;
 import com.yourname.combatoverhaul.rig.Rig;
 import com.yourname.combatoverhaul.rig.RigStore;
 import net.minecraft.client.gui.GuiGraphics;
@@ -173,7 +174,7 @@ public final class RigEditorScreen extends Screen {
             if (par == null) {
                 continue;
             }
-            drawLine(g, sx(par, cx), sy(par, cy), sx(p, cx), sy(p, cy), 0xFF43506A);
+            EditorDraw.line(g, sx(par, cx), sy(par, cy), sx(p, cx), sy(p, cy), 0xFF43506A);
         }
         for (Rig.Point p : rig.points) {
             boolean sel = p == point();
@@ -199,29 +200,6 @@ public final class RigEditorScreen extends Screen {
             g.drawString(font, status, width - propW + 8, 250, 0xFF80FF80, false);
         }
         super.render(g, mouseX, mouseY, partialTick);
-    }
-
-    private static void drawLine(GuiGraphics g, int x0, int y0, int x1, int y1, int color) {
-        int dx = Math.abs(x1 - x0);
-        int dy = -Math.abs(y1 - y0);
-        int sx = x0 < x1 ? 1 : -1;
-        int sy = y0 < y1 ? 1 : -1;
-        int err = dx + dy;
-        while (true) {
-            g.fill(x0, y0, x0 + 1, y0 + 1, color);
-            if (x0 == x1 && y0 == y1) {
-                break;
-            }
-            int e2 = err * 2;
-            if (e2 >= dy) {
-                err += dy;
-                x0 += sx;
-            }
-            if (e2 <= dx) {
-                err += dx;
-                y0 += sy;
-            }
-        }
     }
 
     @Override
