@@ -3,6 +3,7 @@ package com.yourname.combatoverhaul.rig;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonParser;
+import com.yourname.combatoverhaul.store.SafePath;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.fml.loading.FMLPaths;
 
@@ -28,7 +29,8 @@ public final class RigStore {
     }
 
     public static Path fileFor(ResourceLocation id) {
-        return root().resolve(safe(id.getNamespace())).resolve(safe(id.getPath()) + ".json");
+        return root().resolve(SafePath.safe(id.getNamespace()))
+                .resolve(SafePath.safe(id.getPath()) + ".json");
     }
 
     public static Rig get(ResourceLocation id) {
@@ -85,11 +87,4 @@ public final class RigStore {
         }
     }
 
-    private static String safe(String s) {
-        if (s == null) {
-            return "_";
-        }
-        String v = s.replaceAll("[^a-zA-Z0-9_\\-.]", "_");
-        return v.isBlank() || v.equals(".") || v.equals("..") ? "_" : v;
-    }
 }

@@ -1,8 +1,8 @@
 # CombatOverhaul 交接文档
 
-最后更新：2026-11-14 18:39（Asia/Shanghai）
+最后更新：2026-11-14 18:40（Asia/Shanghai）
 工程根目录：`C:\Users\Zero\Desktop\more_damage\combatoverhaul`
-当前构建：`build/libs/combatoverhaul-1.0.0.jar`，566,737 bytes，2026-11-14 18:39:37
+当前构建：`build/libs/combatoverhaul-1.0.0.jar`，567,056 bytes，2026-11-14 18:40:52
 当前自检：`gradlew coreCheck --offline` PASS（默认 + ER + 原生 player/Alex + 多段比例切分 + source_bones + bind_bones + 双层皮肤切割 + 显式跟随映射 + 接缝柔化 + 玩家渲染回接）
 部署状态：已同步到 `E:\.minecraft\versions\DLC测试\mods\` 与 `prod_run\mods\`（SHA-256 一致）
 
@@ -133,6 +133,8 @@ indexAt 行命中
 **ArmorTextures 去重**：新增 `client/render/ArmorTextures`，统一 `ArmorItem + EquipmentSlot -> layer_1/layer_2` 的原版盔甲纹理路径。`SkinnedArmorRenderer.textureOf` 与 `renderVanillaFallback` 不再各写一份材质名解析。构建 566,434 bytes。
 
 **ActionSelectionScreen 去重**：新增 `client/screen/ActionSelectionScreen`，统一两个勾选界面的动作切换、搜索、列表滚动、批量按钮、保存返回和行命中。`ActionBindingScreen` 现在只保留 weapons/entities 页签与绑定列表；`WeaponGrantScreen` 只保留 writeAll、●/○ 模型标记、失败标红和自动生成模型。构建 566,737 bytes。此轮只验证编译，未做游戏内界面点击回归。
+
+**SafePath 去重**：新增 `store/SafePath`，合并 `GraphStore` 与 `RigStore` 完全相同的 namespace/path 文件名清洗。自动方法体重复扫描当前跨文件重复组为 0（阈值 >100 字符）。构建 567,056 bytes。
 
 **动画缺失回退原版**：标准人形查看器先调用 `humanoid.setupAnim(player, walkAnimation.position(), speed(), ...)` 建立原版基础姿态；自定义 action 只有实际包含该骨骼通道时才覆盖。没有行走/格挡片段时，骨架继续使用原版走路/待机，不会被清成 rest pose。实机模型仍可见，但需更新布局/盔甲几何。
 
@@ -572,10 +574,10 @@ tools/draw_skeleton.py
 
 ### 6.3 验证证据
 
-已实际编译（2026-11-14 18:39，完整 build）：
+已实际编译（2026-11-14 18:40，完整 build）：
 
 ```text
-BUILD SUCCESSFUL in 24s
+BUILD SUCCESSFUL in 21s
 > Task :coreCheck
 CoreDataCheck PASS
 > Task :test

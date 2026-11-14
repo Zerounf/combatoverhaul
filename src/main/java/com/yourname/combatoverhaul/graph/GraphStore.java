@@ -1,6 +1,7 @@
 package com.yourname.combatoverhaul.graph;
 
 import com.google.gson.Gson;
+import com.yourname.combatoverhaul.store.SafePath;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonParser;
 import net.minecraftforge.fml.loading.FMLPaths;
@@ -24,7 +25,7 @@ public final class GraphStore {
 
     public static Path fileFor(String namespace, String path) {
         return FMLPaths.CONFIGDIR.get().resolve("combatoverhaul").resolve("graphs")
-                .resolve(safe(namespace)).resolve(safe(path) + ".json");
+                .resolve(SafePath.safe(namespace)).resolve(SafePath.safe(path) + ".json");
     }
 
     public static Graph load(String namespace, String path) {
@@ -73,11 +74,4 @@ public final class GraphStore {
         return namespace + "/" + path;
     }
 
-    private static String safe(String s) {
-        if (s == null) {
-            return "_";
-        }
-        String v = s.replaceAll("[^a-zA-Z0-9_\\-.]", "_");
-        return v.isBlank() || v.equals(".") || v.equals("..") ? "_" : v;
-    }
 }
