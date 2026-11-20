@@ -28,6 +28,9 @@ public final class RigEditorScreen extends Screen {
     private EditBox px;
     private EditBox py;
     private EditBox pz;
+    private EditBox nameBox;
+    private EditBox parentBox;
+    private EditBox semanticBox;
     private String status = "";
 
     private int listW = 170;
@@ -59,15 +62,31 @@ public final class RigEditorScreen extends Screen {
                 .bounds(width - propW + 8 + (propW - 12) / 2, height - 28,
                         (propW - 12) / 2, 20).build());
         int x = width - propW + 8;
-        px = new EditBox(font, x, 96, propW - 16, 18, Component.literal("x"));
-        py = new EditBox(font, x, 142, propW - 16, 18, Component.literal("y"));
-        pz = new EditBox(font, x, 188, propW - 16, 18, Component.literal("z"));
+        px = new EditBox(font, x, 50, propW - 16, 14, Component.literal("x"));
+        py = new EditBox(font, x, 72, propW - 16, 14, Component.literal("y"));
+        pz = new EditBox(font, x, 94, propW - 16, 14, Component.literal("z"));
         for (EditBox b : new EditBox[]{px, py, pz}) {
             addRenderableWidget(b);
         }
         px.setResponder(v -> setPivot(0, v));
         py.setResponder(v -> setPivot(1, v));
         pz.setResponder(v -> setPivot(2, v));
+
+        nameBox = new EditBox(font, x, 116, propW - 16, 14, Component.literal("name"));
+        parentBox = new EditBox(font, x, 138, propW - 16, 14, Component.literal("parent"));
+        semanticBox = new EditBox(font, x, 160, propW - 16, 14, Component.literal("semantic"));
+        for (EditBox b : new EditBox[]{nameBox, parentBox, semanticBox}) {
+            addRenderableWidget(b);
+        }
+        nameBox.setResponder(v -> setString(0, v));
+        parentBox.setResponder(v -> setString(1, v));
+        semanticBox.setResponder(v -> setString(2, v));
+
+        addRenderableWidget(Button.builder(Component.literal("加点"), b -> addPoint())
+                .bounds(width - propW + 4, 4, (propW - 12) / 2, 18).build());
+        addRenderableWidget(Button.builder(Component.literal("删点"), b -> deletePoint())
+                .bounds(width - propW + 8 + (propW - 12) / 2, 4,
+                        (propW - 12) / 2, 18).build());
         syncFields();
     }
 
@@ -93,6 +112,15 @@ public final class RigEditorScreen extends Screen {
         if (pz != null && !pz.isFocused()) {
             pz.setValue(fmt(p.pivot[2]));
         }
+        if (nameBox != null && !nameBox.isFocused()) {
+            nameBox.setValue(p.name == null ? "" : p.name);
+        }
+        if (parentBox != null && !parentBox.isFocused()) {
+            parentBox.setValue(p.parent == null ? "" : p.parent);
+        }
+        if (semanticBox != null && !semanticBox.isFocused()) {
+            semanticBox.setValue(p.semantic == null ? "" : p.semantic);
+        }
     }
 
     private void setPivot(int axis, String text) {
@@ -104,6 +132,72 @@ public final class RigEditorScreen extends Screen {
             p.pivot[axis] = Float.parseFloat(text.trim());
         } catch (RuntimeException ignored) {
         }
+    }
+
+    private void setString(int which, String text) {
+        Rig.Point p = point();
+        if (p == null) {
+            return;
+        }
+        String v = text == null ? "" : text.trim();
+        if (which == 0) {
+            if (v.isBlank() || (!v.equals(p.name) && rig.byName.containsKey(v))) {
+                return;
+            }
+            String old = p.name;
+            rig.byName.remove(old);
+            p.name = v;
+            rig.byName.put(v, p);
+            for (Rig.Point other : rig.points) {
+                if (old.equals(other.parent)) {
+                    other.parent = v;
+                }
+            }
+        } else if (which == 1) {
+            if (v.isBlank() || rig.byName.containsKey(v)) {
+                p.parent = v;
+            }
+        } else {
+            p.semantic = v;
+        }
+    }
+
+    private void addPoint() {
+        String name = "joint_" + (rig.points.size() + 1);
+        while (rig.byName.containsKey(name)) {
+            name = name + "_";
+        }
+        Rig.Point p = new Rig.Point();
+        p.name = name;
+        Rig.Point parent = point();
+        p.parent = parent == null ? "" : parent.name;
+        p.pivot = parent == null ? new float[]{0, 0, 0}
+                : new float[]{parent.pivot[0], parent.pivot[1] + 1f, parent.pivot[2]};
+        rig.points.add(p);
+        rig.byName.put(name, p);
+        selected = rig.points.size() - 1;
+        syncFields();
+        status = "已添加 " + name;
+    }
+
+    private void deletePoint() {
+        if (rig.points.isEmpty()) {
+            return;
+        }
+        Rig.Point removed = point();
+        if (removed == null) {
+            return;
+        }
+        rig.points.remove(selected);
+        rig.byName.remove(removed.name);
+        for (Rig.Point p : rig.points) {
+            if (removed.name.equals(p.parent)) {
+                p.parent = "";
+            }
+        }
+        selected = Math.max(0, Math.min(selected, rig.points.size() - 1));
+        syncFields();
+        status = "已删除 " + removed.name;
     }
 
     private void save() {
@@ -187,17 +281,15 @@ public final class RigEditorScreen extends Screen {
         }
         g.drawString(font, "拖动点改 x/y；右侧精确输入", listW + 8, 20,
                 0xFF9FA8B8, false);
-        g.drawString(font, "参数", width - propW + 8, 78, 0xFF9FA8B8, false);
-        g.drawString(font, "x", width - propW + 8, 86, 0xFF9FA8B8, false);
-        g.drawString(font, "y", width - propW + 8, 132, 0xFF9FA8B8, false);
-        g.drawString(font, "z", width - propW + 8, 178, 0xFF9FA8B8, false);
-        Rig.Point p = point();
-        if (p != null) {
-            g.drawString(font, "parent: " + p.parent, width - propW + 8, 216, 0xFFB8C0D0, false);
-            g.drawString(font, "semantic: " + p.semantic, width - propW + 8, 230, 0xFFB8C0D0, false);
-        }
+        g.drawString(font, "参数", width - propW + 8, 32, 0xFF9FA8B8, false);
+        g.drawString(font, "x", width - propW + 8, 42, 0xFF9FA8B8, false);
+        g.drawString(font, "y", width - propW + 8, 64, 0xFF9FA8B8, false);
+        g.drawString(font, "z", width - propW + 8, 86, 0xFF9FA8B8, false);
+        g.drawString(font, "name", width - propW + 8, 108, 0xFF9FA8B8, false);
+        g.drawString(font, "parent", width - propW + 8, 130, 0xFF9FA8B8, false);
+        g.drawString(font, "semantic", width - propW + 8, 152, 0xFF9FA8B8, false);
         if (!status.isBlank()) {
-            g.drawString(font, status, width - propW + 8, 250, 0xFF80FF80, false);
+            g.drawString(font, status, width - propW + 8, 180, 0xFF80FF80, false);
         }
         super.render(g, mouseX, mouseY, partialTick);
     }

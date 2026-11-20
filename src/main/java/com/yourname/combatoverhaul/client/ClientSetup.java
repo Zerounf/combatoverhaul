@@ -79,6 +79,7 @@ public final class ClientSetup {
     private static boolean hitboxTested;
     private static boolean armorTested;
     private static boolean humanoidTested;
+    private static boolean armorGeometryTested;
 
     private ClientSetup() {
     }
@@ -160,6 +161,29 @@ public final class ClientSetup {
                     new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIAMOND_CHESTPLATE));
             mc.options.setCameraType(net.minecraft.client.CameraType.THIRD_PERSON_BACK);
             CombatOverhaulMod.LOGGER.info("[CombatOverhaul][ArmorTest] equipped diamond chestplate + third person");
+        }
+
+        // 实机测试钩子：-Dcombatoverhaul.armorGeometryTest=true 捕获原版 HumanoidArmorModel 并验证 ArmorGeometry
+        if (!armorGeometryTested && mc.level != null && mc.player != null
+                && "true".equalsIgnoreCase(System.getProperty("combatoverhaul.armorGeometryTest"))) {
+            armorGeometryTested = true;
+            try {
+                boolean slim = com.yourname.combatoverhaul.client.anim.ClientAnimHandler
+                        .isSlimPlayer(mc.player);
+                var layer = mc.getEntityModels().bakeLayer(slim
+                        ? net.minecraft.client.model.geom.ModelLayers.PLAYER_SLIM_OUTER_ARMOR
+                        : net.minecraft.client.model.geom.ModelLayers.PLAYER_OUTER_ARMOR);
+                var model = new net.minecraft.client.model.HumanoidArmorModel<net.minecraft.world.entity.player.Player>(layer);
+                var geometry = com.yourname.combatoverhaul.client.armor.HumanoidArmorGeometryAdapter.capture(
+                        "minecraft:diamond_chestplate", "chest", false,
+                        "minecraft:textures/models/armor/diamond_layer_1.png", model);
+                CombatOverhaulMod.LOGGER.info(
+                        "[CombatOverhaul][ArmorGeometryTest] bones={} vertices={} faces={} errors={}",
+                        geometry.bones.size(), geometry.vertices.size(), geometry.faces.size(),
+                        geometry.validate());
+            } catch (RuntimeException e) {
+                CombatOverhaulMod.LOGGER.error("[CombatOverhaul][ArmorGeometryTest] failed", e);
+            }
         }
 
         // 实机 UI 测试钩子：-Dcombatoverhaul.hitboxTest=true 打开模型编辑器判定框工具

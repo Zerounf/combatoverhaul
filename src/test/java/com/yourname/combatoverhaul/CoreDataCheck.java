@@ -4,6 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.yourname.combatoverhaul.client.armor.ArmorGeometry;
 import com.yourname.combatoverhaul.client.model.BoneSplitter;
 import com.yourname.combatoverhaul.client.model.ModelRigJoints;
 import com.yourname.combatoverhaul.client.model.ParsedBone;
@@ -50,6 +51,7 @@ public final class CoreDataCheck {
         splitBoneMultiSegments();
         followSubtreeSync();
         autoSkinSynthetic();
+        armorGeometryValidationAndBounds();
         invalidWeightsAreRejected();
         missingBoneReferenceIsRejected();
         if (args.length > 0 && !args[0].isBlank()) {
@@ -1145,6 +1147,34 @@ public final class CoreDataCheck {
         } catch (IllegalStateException expected) {
             // expected: saving invalid skin data must fail
         }
+    }
+
+    private static void armorGeometryValidationAndBounds() {
+        ArmorGeometry g = new ArmorGeometry();
+        g.id = "minecraft:diamond_chestplate";
+        g.slot = "chest";
+        g.inner = false;
+        g.texture = "minecraft:textures/models/armor/diamond_layer_1.png";
+        g.bones.add(new ArmorGeometry.Bone("body", null, 0, 0, 0));
+        g.bones.add(new ArmorGeometry.Bone("right_arm", null, 5, 2, 0));
+        g.vertices.add(new ArmorGeometry.Vertex(-1, -2, 0, 0, 0, "body"));
+        g.vertices.add(new ArmorGeometry.Vertex(1, -2, 0, 1, 0, "body"));
+        g.vertices.add(new ArmorGeometry.Vertex(1, 2, 0, 1, 1, "body"));
+        g.vertices.add(new ArmorGeometry.Vertex(-1, 2, 0, 0, 1, "body"));
+        g.faces.add(new ArmorGeometry.Face(0, 1, 2, 3));
+
+        check(g.validate().isEmpty(), "armor geometry validates");
+        float[] b = g.bounds();
+        check(b != null && b[0] == -1 && b[1] == -2 && b[3] == 1 && b[4] == 2,
+                "armor geometry bounds");
+
+        ArmorGeometry bad = new ArmorGeometry();
+        bad.id = "bad";
+        bad.slot = "chest";
+        bad.bones.add(new ArmorGeometry.Bone("body", "missing", 0, 0, 0));
+        bad.vertices.add(new ArmorGeometry.Vertex(0, 0, 0, 0, 0, "nope"));
+        bad.faces.add(new ArmorGeometry.Face(0, 1, 2, 3));
+        check(!bad.validate().isEmpty(), "invalid armor geometry rejected");
     }
 
     private static void check(boolean condition, String message) {
