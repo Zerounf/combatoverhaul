@@ -1,8 +1,8 @@
 # CombatOverhaul 交接文档
 
-最后更新：2026-11-25 16:50（Asia/Shanghai）
+最后更新：2026-11-25 18:06（Asia/Shanghai）
 工程根目录：`C:\Users\Zero\Desktop\more_damage\combatoverhaul`
-当前构建：`build/libs/combatoverhaul-1.0.0.jar`，588,280 bytes，2026-11-25 16:50:09
+当前构建：`build/libs/combatoverhaul-1.0.0.jar`，588,667 bytes，2026-11-25 18:06:21
 当前自检：`gradlew coreCheck --offline` PASS（默认 + ER + 原生 player/Alex + 多段比例切分 + source_bones + bind_bones + 双层皮肤切割 + 显式跟随映射 + 接缝柔化 + 玩家渲染回接）
 部署状态：已同步到 `E:\.minecraft\versions\DLC测试\mods\` 与 `prod_run\mods\`（SHA-256 一致）
 
@@ -185,6 +185,10 @@ GL_NEAREST 过滤
 真实 perspective 相机
 ```
 实机验证：模型清晰、可显示 3D 透视；当前相机取景仍偏近，头部姿态/盔甲位置还需调。截图 `viewer_rt_physical.png`。右侧按钮文字仍被裁切，需要下一步布局重做。
+
+**动画采样：四元数 slerp（新）**：`ActionStore.BoneChannel.lerp` 不再逐欧拉角线性插值，改为
+`rotationZYX -> Quaternion.slerp -> getEulerAnglesZYX`，避免 180° 附近翻转。位置/缩放仍线性。
+参考 Spark-Core 1.21.1 的 `BoneAnimation`/`BakedBoneAnimation` 结构，下一步是 Spline + bake。
 
 **动画缺失回退原版**：标准人形查看器先调用 `humanoid.setupAnim(player, walkAnimation.position(), speed(), ...)` 建立原版基础姿态；自定义 action 只有实际包含该骨骼通道时才覆盖。没有行走/格挡片段时，骨架继续使用原版走路/待机，不会被清成 rest pose。实机模型仍可见，但需更新布局/盔甲几何。
 
@@ -624,10 +628,10 @@ tools/draw_skeleton.py
 
 ### 6.3 验证证据
 
-已实际编译（2026-11-25 16:50，完整 build）：
+已实际编译（2026-11-25 18:06，完整 build）：
 
 ```text
-BUILD SUCCESSFUL in 31s
+BUILD SUCCESSFUL in 20s
 > Task :coreCheck
 CoreDataCheck PASS
 > Task :test

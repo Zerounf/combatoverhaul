@@ -94,9 +94,22 @@ public final class ActionStore {
             BoneChannel n = new BoneChannel();
             for (int i = 0; i < 3; i++) {
                 n.pos[i] = a.pos[i] + (b.pos[i] - a.pos[i]) * f;
-                n.rotDeg[i] = a.rotDeg[i] + (b.rotDeg[i] - a.rotDeg[i]) * f;
                 n.scale[i] = a.scale[i] + (b.scale[i] - a.scale[i]) * f;
             }
+            // 旋转必须走四元数 slerp；逐欧拉角线性插值会在 180° 附近翻转。
+            org.joml.Quaternionf qa = new org.joml.Quaternionf().rotationZYX(
+                    (float) Math.toRadians(a.rotDeg[2]),
+                    (float) Math.toRadians(a.rotDeg[1]),
+                    (float) Math.toRadians(a.rotDeg[0]));
+            org.joml.Quaternionf qb = new org.joml.Quaternionf().rotationZYX(
+                    (float) Math.toRadians(b.rotDeg[2]),
+                    (float) Math.toRadians(b.rotDeg[1]),
+                    (float) Math.toRadians(b.rotDeg[0]));
+            qa.slerp(qb, Math.max(0f, Math.min(1f, f)));
+            org.joml.Vector3f e = qa.getEulerAnglesZYX(new org.joml.Vector3f());
+            n.rotDeg[0] = (float) Math.toDegrees(e.x);
+            n.rotDeg[1] = (float) Math.toDegrees(e.y);
+            n.rotDeg[2] = (float) Math.toDegrees(e.z);
             return n;
         }
     }
