@@ -35,9 +35,20 @@ public final class BedrockRenderer {
         // BedrockGeometry 的枢轴/顶点沿用内部模型单位（1/16 方块）；poseStack 是方块单位，
         // 所以在根矩阵上统一缩 1/16，骨骼 pivot 与 quad 顶点都不必逐个除。
         root.scale(1f / 16f);
+        BedrockBone body = flatBody(geometry);
+        Matrix4f bodyDelta = null;
+        if (body != null) {
+            Matrix4f bodyRest = boneMatrix(body, root, null, true);
+            Matrix4f bodyAnim = boneMatrix(body, root, pose, false);
+            bodyDelta = new Matrix4f(bodyAnim).mul(new Matrix4f(bodyRest).invert());
+        }
         boolean any = false;
         for (BedrockBone bone : geometry.roots) {
-            any |= renderBone(vc, bone, root, pose, packedLight, packedOverlay, red, green, blue, alpha);
+            Matrix4f parent = root;
+            if (bodyDelta != null && bone != body) {
+                parent = new Matrix4f(root).mul(bodyDelta);
+            }
+            any |= renderBone(vc, bone, parent, pose, packedLight, packedOverlay, red, green, blue, alpha);
         }
         return any;
     }
@@ -48,37 +59,13 @@ public final class BedrockRenderer {
         if (bone == null || !bone.visible) {
             return false;
         }
-        BedrockPose.BonePose bp = pose == null ? null : pose.get(bone.name);
-
-        Vector3f pivot;
-        Vector3f rotation;
-        Vector3f scale;
-        if (pose != null && pose.absolute && bp != null) {
-            // ModelPart 的绝对局部值：已经包含原版 setupAnim 的走路/摆动/俯仰 + 本模组动作
-            pivot = new Vector3f(bp.position);
-            rotation = new Vector3f(bp.rotationRad);
-            scale = new Vector3f(bp.scale);
-        } else {
-            pivot = new Vector3f(bone.pivot);
-            rotation = new Vector3f(bone.rotationRad);
-            scale = new Vector3f(bone.scale);
-            if (bp != null) {
-                pivot.add(bp.position);
-                rotation.add(bp.rotationRad);
-                scale.mul(bp.scale);
-            }
-        }
-
-        Matrix4f boneMat = new Matrix4f(parent)
-                .translate(pivot.x, pivot.y, pivot.z)
-                .rotateZYX(rotation.z, rotation.y, rotation.x)
-                .scale(scale.x, scale.y, scale.z);
+        Matrix4f boneMat = boneMatrix(bone, parent, pose, false);
         Matrix3f boneNormal = normalMatrix(boneMat);
 
         // 关节柔化带：靠近父关节的顶点用“只平移、不旋转”的 rest 位置插值，
         // 远离关节的顶点用完整骨骼旋转；与旧 ModelPreviewRenderer 的 soft_joint 语义一致。
         Matrix4f restMat = bone.softJoint > 0f
-                ? new Matrix4f(parent).translate(pivot.x, pivot.y, pivot.z)
+                ? new Matrix4f(parent).translate(bone.pivot.x, bone.pivot.y, bone.pivot.z)
                 : null;
 
         boolean any = false;
@@ -130,6 +117,64 @@ public final class BedrockRenderer {
             any |= renderBone(vc, child, boneMat, pose, light, overlay, red, green, blue, alpha);
         }
         return any;
+    }
+
+    private static Matrix4f boneMatrix(BedrockBone bone, Matrix4f parent,
+                                       BedrockPose pose, boolean base) {
+        BedrockPose.BonePose bp = pose == null ? null : pose.get(bone.name);
+        Vector3f pivot;
+        Vector3f rotation;
+        Vector3f scale;
+        if (!base && pose != null && pose.absolute && bp != null) {
+            pivot = new Vector3f(bp.position);
+            rotation = new Vector3f(bp.rotationRad);
+            scale = new Vector3f(bp.scale);
+        } else {
+            pivot = new Vector3f(bone.pivot);
+            rotation = new Vector3f(bone.rotationRad);
+            scale = new Vector3f(bone.scale);
+            if (!base && bp != null) {
+                pivot.add(bp.position);
+                rotation.add(bp.rotationRad);
+                scale.mul(bp.scale);
+            }
+        }
+        return new Matrix4f(parent)
+                .translate(pivot.x, pivot.y, pivot.z)
+                .rotateZYX(rotation.z, rotation.y, rotation.x)
+                .scale(scale.x, scale.y, scale.z);
+    }
+
+    private static BedrockBone flatBody(BedrockGeometry geometry) {
+        if (geometry == null || geometry.roots.size() < 2) {
+            return null;
+        }
+        BedrockBone best = null;
+        float bestVolume = -1f;
+        for (BedrockBone root : geometry.roots) {
+            float minX = Float.MAX_VALUE, minY = Float.MAX_VALUE, minZ = Float.MAX_VALUE;
+            float maxX = -Float.MAX_VALUE, maxY = -Float.MAX_VALUE, maxZ = -Float.MAX_VALUE;
+            boolean any = false;
+            for (BedrockCube cube : root.cubes) {
+                for (BedrockQuad quad : cube.quads) {
+                    for (Vector3f p : quad.positions) {
+                        minX = Math.min(minX, p.x); minY = Math.min(minY, p.y); minZ = Math.min(minZ, p.z);
+                        maxX = Math.max(maxX, p.x); maxY = Math.max(maxY, p.y); maxZ = Math.max(maxZ, p.z);
+                        any = true;
+                    }
+                }
+            }
+            if (!any) {
+                continue;
+            }
+            float volume = Math.max(0f, maxX - minX) * Math.max(0f, maxY - minY)
+                    * Math.max(0f, maxZ - minZ);
+            if (volume > bestVolume) {
+                bestVolume = volume;
+                best = root;
+            }
+        }
+        return bestVolume > 0f ? best : null;
     }
 
     /** 法线矩阵 = inverse-transpose(3x3)；缩放为 0 时退化为单位矩阵，避免崩溃。 */

@@ -1,8 +1,8 @@
 # CombatOverhaul 交接文档
 
-最后更新：2026-11-25 19:59（Asia/Shanghai）
+最后更新：2026-11-25 20:06（Asia/Shanghai）
 工程根目录：`C:\Users\Zero\Desktop\more_damage\combatoverhaul`
-当前构建：`build/libs/combatoverhaul-1.0.0.jar`，603,253 bytes，2026-11-25 19:59:38
+当前构建：`build/libs/combatoverhaul-1.0.0.jar`，604,189 bytes，2026-11-25 20:06:23
 当前自检：`gradlew coreCheck --offline` PASS（默认 + ER + 原生 player/Alex + 多段比例切分 + source_bones + bind_bones + 双层皮肤切割 + 显式跟随映射 + 接缝柔化 + 玩家渲染回接）
 部署状态：已同步到 `E:\.minecraft\versions\DLC测试\mods\` 与 `prod_run\mods\`（SHA-256 一致）
 
@@ -281,6 +281,16 @@ source=body
 
 **真正 open 编辑器视口深度（重要）**：`ModelPreviewRenderer.render` 之前也调用 `RenderSystem.disableDepthTest()`；`open`/`ModelEditorScreen` 的 3D 视口不是 `HumanoidViewportRenderer`，所以之前修的那条路径没有覆盖用户实际模型。
 现在改为 `enableDepthTest + depthMask(true) + GL_LEQUAL`，模型多层/盔甲叠层不再无条件互相覆盖。构建 603,253 bytes。
+
+**模型预览真实路径修复（20:06）**：
+- `ModelPreviewRenderer` 是 `open`/`ModelEditorScreen` 的视口，之前同样 `disableDepthTest()`；已开启深度测试。这是用户模型层互相覆盖的直接原因。
+- `BedrockRenderer`（实体/驴实际路径）也对平级 root 计算 body 动画增量：
+```text
+bodyDelta = bodyAnim * bodyRest^-1
+其他 root 的 parent = root * bodyDelta
+```
+不再把绝对 pivot 的 root 硬挂到 body 下导致二次平移。`SkinnedMeshRenderer` 同样改用 delta 传播。
+- 新增 `BedrockRenderer.flatBody`：按 cube 包围盒体积选躯干；驴的 body 体积最大。
 
 **动画缺失回退原版**：标准人形查看器先调用 `humanoid.setupAnim(player, walkAnimation.position(), speed(), ...)` 建立原版基础姿态；自定义 action 只有实际包含该骨骼通道时才覆盖。没有行走/格挡片段时，骨架继续使用原版走路/待机，不会被清成 rest pose。实机模型仍可见，但需更新布局/盔甲几何。
 
@@ -720,10 +730,10 @@ tools/draw_skeleton.py
 
 ### 6.3 验证证据
 
-已实际编译（2026-11-25 19:59，完整 build）：
+已实际编译（2026-11-25 20:06，完整 build）：
 
 ```text
-BUILD SUCCESSFUL in 20s
+BUILD SUCCESSFUL in 21s
 > Task :coreCheck
 CoreDataCheck PASS
 > Task :test

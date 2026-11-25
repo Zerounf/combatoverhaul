@@ -49,25 +49,22 @@ public final class SkinnedMeshRenderer {
         model.syncFollow();
         Map<ParsedBone, Matrix4f> rest = new IdentityHashMap<>();
         Map<ParsedBone, Matrix4f> animated = new IdentityHashMap<>();
+        for (ParsedBone root : model.roots) {
+            build(root, null, null, rest, animated, animPose);
+        }
+        // body 对平级 root 的运动传播用“动画增量”，不能把它们重新挂到 body 的
+        // rest 矩阵下：root 的 pivot 是模型绝对坐标，直接做父矩阵会二次平移。
         ParsedBone flatBody = flatBody(model);
         if (flatBody != null) {
-            // 原版 Quadruped/Player 扫描出的 body/head/legs 是平级根。
-            // 动画只转 body 时，头/前腿会留在地上；这里把 body 的 rest/anim
-            // 作为其他根的父矩阵，等价于把它们挂到 body 下，但不改 JSON 树。
-            build(flatBody, null, null, rest, animated, animPose);
             Matrix4f bodyRest = rest.get(flatBody);
             Matrix4f bodyAnim = animated.get(flatBody);
-            for (ParsedBone root : model.roots) {
-                if (root != flatBody) {
-                    build(root,
-                            bodyRest == null ? null : new Matrix4f(bodyRest),
-                            bodyAnim == null ? null : new Matrix4f(bodyAnim),
-                            rest, animated, animPose);
+            if (bodyRest != null && bodyAnim != null) {
+                Matrix4f delta = new Matrix4f(bodyAnim).mul(new Matrix4f(bodyRest).invert());
+                for (ParsedBone root : model.roots) {
+                    if (root != flatBody) {
+                        propagate(root, animated, delta);
+                    }
                 }
-            }
-        } else {
-            for (ParsedBone root : model.roots) {
-                build(root, null, null, rest, animated, animPose);
             }
         }
         int n = model.bones.size();
@@ -151,6 +148,17 @@ public final class SkinnedMeshRenderer {
                         .normal(normal.x, normal.y, normal.z)
                         .endVertex();
             }
+        }
+    }
+
+    private static void propagate(ParsedBone bone, Map<ParsedBone, Matrix4f> animated,
+                                  Matrix4f delta) {
+        Matrix4f a = animated.get(bone);
+        if (a != null) {
+            animated.put(bone, new Matrix4f(delta).mul(a));
+        }
+        for (ParsedBone child : bone.children) {
+            propagate(child, animated, delta);
         }
     }
 
