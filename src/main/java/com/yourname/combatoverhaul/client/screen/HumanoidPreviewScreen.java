@@ -6,6 +6,9 @@ import com.yourname.combatoverhaul.client.model.ParsedModel;
 import com.yourname.combatoverhaul.client.render.HumanoidMeshRenderer;
 import com.yourname.combatoverhaul.client.screen.ui.EditorDraw;
 import com.yourname.combatoverhaul.combat.ActionCache;
+import com.yourname.combatoverhaul.rig.Rig;
+import com.yourname.combatoverhaul.rig.RigStore;
+import net.minecraft.client.gui.components.EditBox;
 import com.yourname.combatoverhaul.store.ActionStore;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -48,6 +51,15 @@ public final class HumanoidPreviewScreen extends Screen {
     private double lastDragY;
     private boolean viewDrag;
     private float viewZoom = 1.0f;
+    private Rig rig;
+    private String rigId = "combatoverhaul:humanoid";
+    private int jointSel = -1;
+    private boolean jointMode;
+    private boolean jointDrag;
+    private EditBox jointName;
+    private EditBox jointParent;
+    private EditBox jointSemantic;
+    private String jointStatus = "";
 
     public HumanoidPreviewScreen() {
         super(Component.literal("标准人形 HumanoidModel"));
@@ -70,6 +82,15 @@ public final class HumanoidPreviewScreen extends Screen {
         actions.addAll(ActionStore.load("minecraft", modelPath, false));
         ActionCache.Entry e = ActionCache.get(ActionCache.keyFor("minecraft", modelPath, false));
         poseModel = e == null ? null : e.model;
+        if (poseModel != null && poseModel.rigId != null && !poseModel.rigId.isBlank()) {
+            rigId = poseModel.rigId;
+        }
+        try {
+            Rig loaded = RigStore.get(new ResourceLocation(rigId));
+            rig = loaded == null ? Rig.humanoid() : loaded;
+        } catch (RuntimeException ex) {
+            rig = Rig.humanoid();
+        }
     }
 
     @Override
@@ -82,24 +103,192 @@ public final class HumanoidPreviewScreen extends Screen {
             playing = !playing;
             b.setMessage(Component.literal(playing ? "暂停" : "播放"));
         }).bounds(bx, 6, rw - 6, 18).build());
-        addRenderableWidget(Button.builder(Component.literal("头盔 " + onOff(helmet)),
-                b -> { helmet = !helmet; b.setMessage(Component.literal("头盔 " + onOff(helmet))); })
-                .bounds(bx, 28, (rw - 8) / 2, 18).build());
-        addRenderableWidget(Button.builder(Component.literal("胸甲 " + onOff(chest)),
-                b -> { chest = !chest; b.setMessage(Component.literal("胸甲 " + onOff(chest))); })
-                .bounds(bx + (rw - 8) / 2 + 2, 28, (rw - 8) / 2, 18).build());
-        addRenderableWidget(Button.builder(Component.literal("护腿 " + onOff(legs)),
-                b -> { legs = !legs; b.setMessage(Component.literal("护腿 " + onOff(legs))); })
-                .bounds(bx, 50, (rw - 8) / 2, 18).build());
-        addRenderableWidget(Button.builder(Component.literal("靴子 " + onOff(boots)),
-                b -> { boots = !boots; b.setMessage(Component.literal("靴子 " + onOff(boots))); })
-                .bounds(bx + (rw - 8) / 2 + 2, 50, (rw - 8) / 2, 18).build());
+        addRenderableWidget(Button.builder(Component.literal("盔" + onOff(helmet)),
+                b -> { helmet = !helmet; b.setMessage(Component.literal("盔" + onOff(helmet))); })
+                .bounds(bx, 28, rw - 6, 18).build());
+        addRenderableWidget(Button.builder(Component.literal("胸" + onOff(chest)),
+                b -> { chest = !chest; b.setMessage(Component.literal("胸" + onOff(chest))); })
+                .bounds(bx, 50, rw - 6, 18).build());
+        addRenderableWidget(Button.builder(Component.literal("腿" + onOff(legs)),
+                b -> { legs = !legs; b.setMessage(Component.literal("腿" + onOff(legs))); })
+                .bounds(bx, 72, rw - 6, 18).build());
+        addRenderableWidget(Button.builder(Component.literal("靴" + onOff(boots)),
+                b -> { boots = !boots; b.setMessage(Component.literal("靴" + onOff(boots))); })
+                .bounds(bx, 94, rw - 6, 18).build());
+        addRenderableWidget(Button.builder(Component.literal("关节"), b -> toggleJointMode())
+                .bounds(bx, 116, rw - 6, 18).build());
+        addRenderableWidget(Button.builder(Component.literal("加点"), b -> addJoint())
+                .bounds(bx, 138, rw - 6, 18).build());
+        addRenderableWidget(Button.builder(Component.literal("删点"), b -> deleteJoint())
+                .bounds(bx, 160, rw - 6, 18).build());
+        addRenderableWidget(Button.builder(Component.literal("保存"), b -> saveJoints())
+                .bounds(bx, 182, rw - 6, 18).build());
+
+        jointName = new EditBox(font, 6, height - 88, Math.max(40, listW - 12), 14,
+                Component.literal("name"));
+        jointParent = new EditBox(font, 6, height - 66, Math.max(40, listW - 12), 14,
+                Component.literal("parent"));
+        jointSemantic = new EditBox(font, 6, height - 44, Math.max(40, listW - 12), 14,
+                Component.literal("semantic"));
+        for (EditBox b : new EditBox[]{jointName, jointParent, jointSemantic}) {
+            addRenderableWidget(b);
+            b.visible = false;
+        }
+        jointName.setResponder(v -> setJointString(0, v));
+        jointParent.setResponder(v -> setJointString(1, v));
+        jointSemantic.setResponder(v -> setJointString(2, v));
+        setJointWidgetsVisible(false);
+
         addRenderableWidget(Button.builder(Component.literal("关闭"), b -> onClose())
-                .bounds(bx, height - 26, rw - 6, 20).build());
+                .bounds(4, height - 26, Math.max(40, listW - 8), 20).build());
     }
 
     private static String onOff(boolean b) {
         return b ? "开" : "关";
+    }
+
+    private Rig.Point joint() {
+        if (rig == null || rig.points.isEmpty()) {
+            return null;
+        }
+        jointSel = Math.max(0, Math.min(jointSel, rig.points.size() - 1));
+        return rig.points.get(jointSel);
+    }
+
+    private void toggleJointMode() {
+        jointMode = !jointMode;
+        setJointWidgetsVisible(jointMode);
+        if (jointMode) {
+            jointSel = rig.points.isEmpty() ? -1 : 0;
+            syncJointFields();
+        }
+    }
+
+    private void setJointWidgetsVisible(boolean visible) {
+        if (jointName != null) {
+            jointName.visible = visible;
+            jointParent.visible = visible;
+            jointSemantic.visible = visible;
+        }
+    }
+
+    private void syncJointFields() {
+        Rig.Point p = joint();
+        if (p == null) {
+            return;
+        }
+        if (jointName != null && !jointName.isFocused()) {
+            jointName.setValue(p.name == null ? "" : p.name);
+        }
+        if (jointParent != null && !jointParent.isFocused()) {
+            jointParent.setValue(p.parent == null ? "" : p.parent);
+        }
+        if (jointSemantic != null && !jointSemantic.isFocused()) {
+            jointSemantic.setValue(p.semantic == null ? "" : p.semantic);
+        }
+    }
+
+    private void setJointString(int which, String text) {
+        Rig.Point p = joint();
+        if (p == null) {
+            return;
+        }
+        String v = text == null ? "" : text.trim();
+        if (which == 0) {
+            if (v.isBlank() || (!v.equals(p.name) && rig.byName.containsKey(v))) {
+                return;
+            }
+            String old = p.name;
+            rig.byName.remove(old);
+            p.name = v;
+            rig.byName.put(v, p);
+            for (Rig.Point other : rig.points) {
+                if (old.equals(other.parent)) {
+                    other.parent = v;
+                }
+            }
+        } else if (which == 1) {
+            if (v.isBlank() || rig.byName.containsKey(v)) {
+                p.parent = v;
+            }
+        } else {
+            p.semantic = v;
+        }
+    }
+
+    private void addJoint() {
+        if (rig == null) {
+            return;
+        }
+        String name = "joint_" + (rig.points.size() + 1);
+        while (rig.byName.containsKey(name)) {
+            name += "_";
+        }
+        Rig.Point p = new Rig.Point();
+        p.name = name;
+        Rig.Point parent = joint();
+        p.parent = parent == null ? "" : parent.name;
+        p.pivot = parent == null ? new float[]{0, 0, 0}
+                : new float[]{parent.pivot[0], parent.pivot[1] + 1f, parent.pivot[2]};
+        rig.points.add(p);
+        rig.byName.put(name, p);
+        jointSel = rig.points.size() - 1;
+        syncJointFields();
+        jointStatus = "已添加 " + name;
+    }
+
+    private void deleteJoint() {
+        if (rig == null || rig.points.isEmpty()) {
+            return;
+        }
+        Rig.Point removed = joint();
+        if (removed == null) {
+            return;
+        }
+        rig.points.remove(jointSel);
+        rig.byName.remove(removed.name);
+        for (Rig.Point p : rig.points) {
+            if (removed.name.equals(p.parent)) {
+                p.parent = "";
+            }
+        }
+        jointSel = Math.max(0, Math.min(jointSel, rig.points.size() - 1));
+        syncJointFields();
+        jointStatus = "已删除 " + removed.name;
+    }
+
+    private void saveJoints() {
+        try {
+            jointStatus = RigStore.save(new ResourceLocation(rigId), rig)
+                    ? "已保存 " + rigId : "保存失败";
+        } catch (RuntimeException e) {
+            jointStatus = "rig id 无效";
+        }
+    }
+
+    private double viewScale() {
+        return Math.min(width, height) * 1.7 / 24.0 * viewZoom * 3.5;
+    }
+
+    private double viewCx() {
+        return width * 0.56;
+    }
+
+    private double viewCy() {
+        return height * 0.54;
+    }
+
+    /** 与 HumanoidMeshRenderer 相同的相机投影。 */
+    private float[] projectJoint(Rig.Point p, double cx, double cy, double scale) {
+        float x = p.pivot[0] / 16f;
+        float y = p.pivot[1] / 16f - 0.5f;
+        float z = p.pivot[2] / 16f;
+        org.joml.Quaternionf rot = new org.joml.Quaternionf()
+                .rotationY((float) Math.toRadians(viewYaw))
+                .rotateX((float) Math.toRadians(viewPitch));
+        org.joml.Vector3f v = new org.joml.Vector3f(x, y, z);
+        rot.transform(v);
+        return new float[]{(float) (cx + v.x * scale), (float) (cy + v.y * scale)};
     }
 
     @Override
@@ -233,6 +422,9 @@ public final class HumanoidPreviewScreen extends Screen {
                     new ResourceLocation("minecraft:textures/models/armor/diamond_layer_2.png")));
         }
         HumanoidMeshRenderer.render(g, layers, cx, cy, scale, viewYaw, viewPitch);
+        if (jointMode) {
+            renderJoints(g, cx, cy, scale);
+        }
         EditorDraw.vline(g, listW, 0, height, 0xFF3A4250);
         g.drawString(font, "动作 tick: " + (int) tick, listW + 8, height - 18, 0xFF9FA8B8, false);
         if (actionIndex >= 0 && actionIndex < actions.size()) {
@@ -268,8 +460,44 @@ public final class HumanoidPreviewScreen extends Screen {
         copy(semantic, inner);
     }
 
+    private void renderJoints(GuiGraphics g, double cx, double cy, double scale) {
+        if (rig == null) {
+            return;
+        }
+        for (Rig.Point p : rig.points) {
+            float[] a = projectJoint(p, cx, cy, scale);
+            Rig.Point parent = p.parent == null || p.parent.isBlank() ? null : rig.point(p.parent);
+            if (parent != null) {
+                float[] b = projectJoint(parent, cx, cy, scale);
+                EditorDraw.line(g, (int) a[0], (int) a[1], (int) b[0], (int) b[1], 0xFF3A6A9A);
+            }
+            boolean sel = p == joint();
+            int r = sel ? 4 : 3;
+            g.fill((int) a[0] - r, (int) a[1] - r, (int) a[0] + r + 1, (int) a[1] + r + 1,
+                    sel ? 0xFFFFFF55 : 0xFF55CCFF);
+            if (sel) {
+                g.drawString(font, p.name, (int) a[0] + 6, (int) a[1] - 4, 0xFFFFEE88, false);
+            }
+        }
+        if (!jointStatus.isBlank()) {
+            g.drawString(font, jointStatus, listW + 8, height - 34, 0xFF80FF80, false);
+        }
+    }
+
     @Override
     public boolean mouseClicked(double mx, double my, int button) {
+        if (jointMode && rig != null && button == 0) {
+            double scale = viewScale();
+            for (int i = 0; i < rig.points.size(); i++) {
+                float[] a = projectJoint(rig.points.get(i), viewCx(), viewCy(), scale);
+                if (Math.hypot(mx - a[0], my - a[1]) <= 8) {
+                    jointSel = i;
+                    jointDrag = true;
+                    syncJointFields();
+                    return true;
+                }
+            }
+        }
         if (mx < listW && my >= 42 && actionIndex < actions.size()) {
             int idx = actionScroll + (int) ((my - 42) / 17);
             if (idx >= 0 && idx < actions.size()) {
@@ -292,6 +520,22 @@ public final class HumanoidPreviewScreen extends Screen {
 
     @Override
     public boolean mouseDragged(double mx, double my, int button, double dx, double dy) {
+        if (jointDrag && button == 0) {
+            Rig.Point p = joint();
+            if (p != null) {
+                double scale = Math.max(1.0, viewScale());
+                org.joml.Quaternionf rot = new org.joml.Quaternionf()
+                        .rotationY((float) Math.toRadians(viewYaw))
+                        .rotateX((float) Math.toRadians(viewPitch));
+                org.joml.Vector3f d = new org.joml.Vector3f(
+                        (float) (dx / scale), (float) (dy / scale), 0);
+                rot.conjugate().transform(d);
+                p.pivot[0] += d.x * 16f;
+                p.pivot[1] += d.y * 16f;
+                p.pivot[2] += d.z * 16f;
+            }
+            return true;
+        }
         if (viewDrag && button == 0) {
             viewYaw += (float) (mx - lastDragX) * 0.8f;
             viewPitch = Math.max(-80f, Math.min(80f,
@@ -305,6 +549,10 @@ public final class HumanoidPreviewScreen extends Screen {
 
     @Override
     public boolean mouseReleased(double mx, double my, int button) {
+        if (jointDrag && button == 0) {
+            jointDrag = false;
+            return true;
+        }
         if (viewDrag && button == 0) {
             viewDrag = false;
             return true;
