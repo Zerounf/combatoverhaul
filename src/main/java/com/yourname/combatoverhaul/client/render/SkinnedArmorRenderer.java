@@ -103,8 +103,10 @@ public final class SkinnedArmorRenderer {
             entry.boundSkeleton = skeleton;
         }
         VertexConsumer vc = buffers.getBuffer(RenderType.armorCutoutNoCull(entry.texture));
-        SkinnedMeshRenderer.render(vc, pose, skeleton, entry.mesh, poseData, light,
-                OverlayTexture.NO_OVERLAY);
+        // 盔甲是作者模型：按 source_map 做刚性跟随，不用自动蒙皮的权重混合。
+        // 这样胸甲不会因为最近骨段分类而被拉扯、下移或变形。
+        SkinnedMeshRenderer.renderRigid(vc, pose, skeleton, entry.mesh, poseData, light,
+                OverlayTexture.NO_OVERLAY, entry.model.sourceMap);
         return true;
     }
 

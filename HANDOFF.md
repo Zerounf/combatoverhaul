@@ -1,8 +1,8 @@
 # CombatOverhaul 交接文档
 
-最后更新：2026-11-25 20:06（Asia/Shanghai）
+最后更新：2026-11-25 20:09（Asia/Shanghai）
 工程根目录：`C:\Users\Zero\Desktop\more_damage\combatoverhaul`
-当前构建：`build/libs/combatoverhaul-1.0.0.jar`，604,189 bytes，2026-11-25 20:06:23
+当前构建：`build/libs/combatoverhaul-1.0.0.jar`，605,247 bytes，2026-11-25 20:09:20
 当前自检：`gradlew coreCheck --offline` PASS（默认 + ER + 原生 player/Alex + 多段比例切分 + source_bones + bind_bones + 双层皮肤切割 + 显式跟随映射 + 接缝柔化 + 玩家渲染回接）
 部署状态：已同步到 `E:\.minecraft\versions\DLC测试\mods\` 与 `prod_run\mods\`（SHA-256 一致）
 
@@ -291,6 +291,10 @@ bodyDelta = bodyAnim * bodyRest^-1
 ```
 不再把绝对 pivot 的 root 硬挂到 body 下导致二次平移。`SkinnedMeshRenderer` 同样改用 delta 传播。
 - 新增 `BedrockRenderer.flatBody`：按 cube 包围盒体积选躯干；驴的 body 体积最大。
+
+**自定义盔甲改成刚性 source_map 跟随（20:09）**：`SkinnedMeshRenderer.renderRigid` 按每个顶点的 `source_bones + source_map` 直接乘一根玩家骨骼的 skin 矩阵，不再使用 `SkinWeightGenerator` 的权重混合。
+原因：胸甲只有一个 `armor_chest -> body` 映射，但自动蒙皮会按最近骨段把部分顶点分给别的 body 分段，导致胸甲被拉低/变形。现在盔甲位置严格等于 JSON 模型位置，并随映射骨骼运动。
+构建 605,247 bytes。
 
 **动画缺失回退原版**：标准人形查看器先调用 `humanoid.setupAnim(player, walkAnimation.position(), speed(), ...)` 建立原版基础姿态；自定义 action 只有实际包含该骨骼通道时才覆盖。没有行走/格挡片段时，骨架继续使用原版走路/待机，不会被清成 rest pose。实机模型仍可见，但需更新布局/盔甲几何。
 
@@ -730,10 +734,10 @@ tools/draw_skeleton.py
 
 ### 6.3 验证证据
 
-已实际编译（2026-11-25 20:06，完整 build）：
+已实际编译（2026-11-25 20:09，完整 build）：
 
 ```text
-BUILD SUCCESSFUL in 21s
+BUILD SUCCESSFUL in 27s
 > Task :coreCheck
 CoreDataCheck PASS
 > Task :test
