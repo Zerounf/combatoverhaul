@@ -420,6 +420,9 @@ public final class GeckoModelLoader {
         out.add("size", arr3(gx1 - gx0, gy1 - gy0, gz1 - gz0));
         // 顶点由 face_verts 显式给出，不依赖渲染端镜像翻转
         out.addProperty("mirror", false);
+        if (inflate != 0f) {
+            out.addProperty("inflate", inflate);
+        }
         if (rot[0] != 0 || rot[1] != 0 || rot[2] != 0) {
             // 编辑器直接取 Bedrock 原值；旋转枢轴转为骨骼枢轴局部坐标
             out.add("rot_deg", arr3(rot[0], rot[1], rot[2]));

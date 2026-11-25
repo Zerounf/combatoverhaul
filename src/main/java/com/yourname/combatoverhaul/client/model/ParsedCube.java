@@ -38,6 +38,8 @@ public final class ParsedCube {
     public float sizeX, sizeY, sizeZ;
     /** 原版立方体镜像标志：true 时 x 轴翻转（与 ModelPart.Cube 构造器 mirror 参数一致） */
     public boolean mirror;
+    /** Bedrock/Spark cube inflate：几何向外膨胀量，单位为模型像素。 */
+    public float inflate;
     /**
      * 立方体自身旋转（弧度，绕 pivotX/Y/Z）；Z→Y→X 顺序，与渲染端 rotationZYX 一致。
      * 全零视为无旋转（默认）。用于承载 Bedrock/GeckoLib 的 cube rotation。
@@ -255,6 +257,7 @@ public final class ParsedCube {
     public ParsedCube copy() {
         ParsedCube c = new ParsedCube(originX, originY, originZ, sizeX, sizeY, sizeZ);
         c.mirror = mirror;
+        c.inflate = inflate;
         c.rotX = rotX;
         c.rotY = rotY;
         c.rotZ = rotZ;
@@ -341,6 +344,9 @@ public final class ParsedCube {
         o.add("origin", arr(originX, originY, originZ));
         o.add("size", arr(sizeX, sizeY, sizeZ));
         o.addProperty("mirror", mirror);
+        if (inflate != 0f) {
+            o.addProperty("inflate", inflate);
+        }
         if (hasRot()) {
             o.add("rot_deg", arr((float) Math.toDegrees(rotX),
                     (float) Math.toDegrees(rotY), (float) Math.toDegrees(rotZ)));
@@ -401,6 +407,9 @@ public final class ParsedCube {
         c.sizeZ = size[2];
         if (o.has("mirror") && o.get("mirror").isJsonPrimitive()) {
             c.mirror = o.get("mirror").getAsBoolean();
+        }
+        if (o.has("inflate") && o.get("inflate").isJsonPrimitive()) {
+            c.inflate = o.get("inflate").getAsFloat();
         }
         if (o.has("rot_deg") && o.get("rot_deg").isJsonArray()) {
             float[] r = floats(o, "rot_deg");

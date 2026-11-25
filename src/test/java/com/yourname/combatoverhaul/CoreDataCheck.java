@@ -6,6 +6,9 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.yourname.combatoverhaul.client.armor.ArmorGeometry;
 import com.yourname.combatoverhaul.client.model.BoneSplitter;
+import com.yourname.combatoverhaul.client.model.core.CoreBone;
+import com.yourname.combatoverhaul.client.model.core.CoreCube;
+import com.yourname.combatoverhaul.client.model.core.CoreModelAdapter;
 import com.yourname.combatoverhaul.client.model.ModelRigJoints;
 import com.yourname.combatoverhaul.client.model.ParsedBone;
 import com.yourname.combatoverhaul.client.model.ParsedCube;
@@ -51,6 +54,7 @@ public final class CoreDataCheck {
         splitBoneMultiSegments();
         followSubtreeSync();
         autoSkinSynthetic();
+        sparkStyleCoreModel();
         armorGeometryValidationAndBounds();
         invalidWeightsAreRejected();
         missingBoneReferenceIsRejected();
@@ -1147,6 +1151,38 @@ public final class CoreDataCheck {
         } catch (IllegalStateException expected) {
             // expected: saving invalid skin data must fail
         }
+    }
+
+    private static void sparkStyleCoreModel() {
+        ParsedBone root = new ParsedBone("root");
+        root.pivotY = 12f;
+        ParsedBone arm = new ParsedBone("right_arm");
+        arm.parent = root;
+        arm.pivotX = -5f;
+        arm.pivotY = 2f;
+        arm.rotZ = (float) Math.toRadians(15);
+        ParsedCube cube = new ParsedCube(-2f, 0f, -2f, 4f, 12f, 4f);
+        cube.inflate = 0.5f;
+        cube.mirror = true;
+        cube.faces[0] = new float[][]{{0f, 0f}, {1f, 0f}, {1f, 1f}, {0f, 1f}};
+        arm.cubes.add(cube);
+
+        CoreBone coreRoot = CoreModelAdapter.fromBone(root);
+        CoreBone coreArm = CoreModelAdapter.fromBone(arm);
+        check(coreArm.parent.equals("root"), "core parent preserved");
+        check(coreArm.cubes.size() == 1, "core cube preserved");
+        CoreCube cc = coreArm.cubes.get(0);
+        check(Math.abs(cc.inflate - 0.5f) < 1e-6f, "core inflate preserved");
+        check(cc.mirror, "core mirror preserved");
+        check(cc.uv.face(0) != null && Math.abs(cc.uv.face(0).w - 1f) < 1e-6f,
+                "core face UV preserved");
+
+        Map<String, CoreBone> bones = new HashMap<>();
+        bones.put(coreRoot.name, coreRoot);
+        bones.put(coreArm.name, coreArm);
+        Matrix4f global = coreArm.globalTransform(bones);
+        check(Float.isFinite(global.m30()) && Float.isFinite(global.m31()),
+                "core global transform finite");
     }
 
     private static void armorGeometryValidationAndBounds() {
