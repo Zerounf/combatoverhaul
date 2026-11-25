@@ -79,6 +79,7 @@ public final class ClientSetup {
     private static boolean hitboxTested;
     private static boolean armorTested;
     private static boolean humanoidTested;
+    private static boolean engineTested;
     private static boolean armorGeometryTested;
 
     private ClientSetup() {
@@ -151,6 +152,19 @@ public final class ClientSetup {
                 && "true".equalsIgnoreCase(System.getProperty("combatoverhaul.humanoidTest"))) {
             humanoidTested = true;
             mc.setScreen(new com.yourname.combatoverhaul.client.screen.HumanoidPreviewScreen());
+        }
+
+        // Engine Lab 实机测试：-Dcombatoverhaul.engineTest=true
+        if (!engineTested && mc.level != null && mc.player != null && mc.screen == null
+                && "true".equalsIgnoreCase(System.getProperty("combatoverhaul.engineTest"))) {
+            String path = com.yourname.combatoverhaul.client.anim.ClientAnimHandler
+                    .playerModelPath(mc.player);
+            var entry = com.yourname.combatoverhaul.combat.ActionCache.get(
+                    com.yourname.combatoverhaul.combat.ActionCache.keyFor("minecraft", path, false));
+            if (entry != null && entry.model != null) {
+                engineTested = true;
+                mc.setScreen(new com.yourname.combatoverhaul.client.screen.EngineLabScreen(entry.model));
+            }
         }
 
         // 实机测试钩子：-Dcombatoverhaul.armorTest=true 客户端装备钻石胸甲，验证自定义盔甲蒙皮

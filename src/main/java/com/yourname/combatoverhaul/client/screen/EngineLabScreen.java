@@ -41,8 +41,8 @@ public final class EngineLabScreen extends Screen {
 
     private int actionIndex;
     private boolean playing = true;
-    private boolean showBones = true;
-    private boolean showColliders = true;
+    private boolean showBones;
+    private boolean showColliders;
     private String status = "";
 
     public EngineLabScreen(ParsedModel model) {
@@ -74,7 +74,16 @@ public final class EngineLabScreen extends Screen {
             }
         }
         if (!actions.isEmpty()) {
-            runtime.states().play(actions.get(0).name, 0f);
+            int start = 0;
+            for (int i = 0; i < actions.size(); i++) {
+                String n = actions.get(i).name.toLowerCase(java.util.Locale.ROOT);
+                if (n.contains("idle") || n.contains("stand")) {
+                    start = i;
+                    break;
+                }
+            }
+            actionIndex = start;
+            runtime.states().play(actions.get(start).name, 0f);
         }
     }
 
@@ -96,6 +105,10 @@ public final class EngineLabScreen extends Screen {
                 .bounds(x, height - 30, 120, 20).build());
         if (model != null) {
             preview.fitView(model, 8, 30, width - 144, height - 42);
+            // fitView 的 span 对扫描模型经常偏小；实验室用固定近景，先保证能看清。
+            preview.zoom = 70f;
+            preview.pitch = 15f;
+            preview.yaw = 180f;
         }
     }
 
@@ -169,6 +182,17 @@ public final class EngineLabScreen extends Screen {
         g.drawString(font, "Bone " + skeleton.bones().size() + "  Collider " + colliders.size(),
                 8, height - 16, 0xFF7F8A99, false);
         super.render(g, mouseX, mouseY, partialTick);
+        RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
+        int bx = width - 132;
+        String[] labels = {playing ? "暂停" : "播放", "下一个动作",
+                showBones ? "骨骼 开" : "骨骼 关",
+                showColliders ? "碰撞体 开" : "碰撞体 关", "关闭"};
+        int[] ys = {12, 38, 64, 90, height - 30};
+        for (int i = 0; i < labels.length; i++) {
+            int tw = font.width(labels[i]);
+            g.drawString(font, labels[i], bx + (120 - tw) / 2, ys[i] + 6,
+                    0xFFFFFFFF, false);
+        }
     }
 
     private void drawBones(GuiGraphics g, int vx0, int vy0, int vx1, int vy1) {
