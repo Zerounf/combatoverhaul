@@ -23,6 +23,7 @@ import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
 import java.nio.file.Files;
+import java.util.List;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
@@ -1188,6 +1189,14 @@ public final class CoreDataCheck {
         SkinnedMesh coreMesh = CoreMeshBuilder.build(bones);
         check(coreMesh.vertices.size() == 4 && coreMesh.faces.size() == 1,
                 "core mesh builds one visible face");
+
+        List<ParsedBone> back = CoreModelAdapter.toParsed(bones);
+        check(back.size() == 2, "core -> parsed keeps bones");
+        ParsedBone backArm = back.stream().filter(b -> b.name.equals("right_arm"))
+                .findFirst().orElse(null);
+        check(backArm != null && backArm.cubes.size() == 1
+                        && Math.abs(backArm.cubes.get(0).faces[0][0][0]) < 1e-6f,
+                "core -> parsed keeps face UV");
     }
 
     private static void armorGeometryValidationAndBounds() {

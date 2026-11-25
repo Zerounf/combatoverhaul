@@ -1,8 +1,8 @@
 # CombatOverhaul 交接文档
 
-最后更新：2026-11-25 18:14（Asia/Shanghai）
+最后更新：2026-11-25 18:58（Asia/Shanghai）
 工程根目录：`C:\Users\Zero\Desktop\more_damage\combatoverhaul`
-当前构建：`build/libs/combatoverhaul-1.0.0.jar`，598,690 bytes，2026-11-25 18:13:59
+当前构建：`build/libs/combatoverhaul-1.0.0.jar`，600,501 bytes，2026-11-25 18:58:45
 当前自检：`gradlew coreCheck --offline` PASS（默认 + ER + 原生 player/Alex + 多段比例切分 + source_bones + bind_bones + 双层皮肤切割 + 显式跟随映射 + 接缝柔化 + 玩家渲染回接）
 部署状态：已同步到 `E:\.minecraft\versions\DLC测试\mods\` 与 `prod_run\mods\`（SHA-256 一致）
 
@@ -213,6 +213,7 @@ client/model/core/CoreModelAdapter
 - 不限制骨骼数量和自由切分。
 CoreDataCheck 已覆盖单面 core mesh 顶点/面生成。`SkinnedMesh.Vertex` 构造器改为 public 以便 core 使用。
 注意：目前 CoreMeshBuilder 是数据/测试可用，游戏渲染和 Bedrock 导入还没有全面切换到 core。
+补充（18:58）：`GeckoModelLoader.Result` 现在同时返回 `core`（`CoreModelAdapter.fromJson(geometry)`）；`CoreModelAdapter.toParsed` 可把 core 转回编辑器 ParsedBone 并保留 parent/children、inflate、mirror、逐角 UV；`CoreMeshBuilder` 使用 FaceUV 原始四角。`CoreDataCheck` 增加 core -> parsed 回环，PASS。
 
 **动画缺失回退原版**：标准人形查看器先调用 `humanoid.setupAnim(player, walkAnimation.position(), speed(), ...)` 建立原版基础姿态；自定义 action 只有实际包含该骨骼通道时才覆盖。没有行走/格挡片段时，骨架继续使用原版走路/待机，不会被清成 rest pose。实机模型仍可见，但需更新布局/盔甲几何。
 
@@ -652,10 +653,10 @@ tools/draw_skeleton.py
 
 ### 6.3 验证证据
 
-已实际编译（2026-11-25 18:14，完整 build）：
+已实际编译（2026-11-25 18:58，完整 build）：
 
 ```text
-BUILD SUCCESSFUL in 23s
+BUILD SUCCESSFUL in 28s
 > Task :coreCheck
 CoreDataCheck PASS
 > Task :test

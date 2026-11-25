@@ -48,14 +48,17 @@ import java.util.Set;
  */
 public final class GeckoModelLoader {
 
-    /** 提取结果：内部格式几何 JSON（含 roots 字段）+ 贴图路径（可为 null） */
+    /** 提取结果：内部格式几何 JSON + 贴图路径 + Spark 风格 core。 */
     public static final class Result {
         public final JsonObject geometry;
         public final String textureSpec;
+        public final java.util.Map<String, com.yourname.combatoverhaul.client.model.core.CoreBone> core;
 
-        Result(JsonObject geometry, String textureSpec) {
+        Result(JsonObject geometry, String textureSpec,
+               java.util.Map<String, com.yourname.combatoverhaul.client.model.core.CoreBone> core) {
             this.geometry = geometry;
             this.textureSpec = textureSpec;
+            this.core = core;
         }
     }
 
@@ -95,7 +98,9 @@ public final class GeckoModelLoader {
             }
             ResourceLocation texRl = invokeResource(geoModel, animatable,
                     "getTextureResource", "getTextureLocation");
-            return new Result(geometry, texRl == null ? null : texRl.toString());
+            java.util.Map<String, com.yourname.combatoverhaul.client.model.core.CoreBone> core =
+                    com.yourname.combatoverhaul.client.model.core.CoreModelAdapter.fromJson(geometry);
+            return new Result(geometry, texRl == null ? null : texRl.toString(), core);
         } catch (RuntimeException e) {
             return null;
         }

@@ -42,8 +42,9 @@ public final class CoreMeshBuilder {
                     for (int corner = 0; corner < 4; corner++) {
                         Vector3f p = corner(cube, face, corner);
                         mat.transformPosition(p);
-                        float u = faceUv == null ? 0f : faceUv.u + faceUv.w * (corner == 1 || corner == 2 ? 1 : 0);
-                        float v = faceUv == null ? 0f : faceUv.v + faceUv.h * (corner >= 2 ? 1 : 0);
+                        float[] uv = faceUv == null ? new float[]{0f, 0f} : faceUv.corner(corner);
+                        float u = uv[0];
+                        float v = uv[1];
                         mesh.vertices.add(new SkinnedMesh.Vertex(p.x, p.y, p.z, u, v));
                         mesh.sourceBones.add(bone.name);
                     }

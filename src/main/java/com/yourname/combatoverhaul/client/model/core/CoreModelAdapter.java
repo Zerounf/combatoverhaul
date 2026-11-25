@@ -35,6 +35,69 @@ public final class CoreModelAdapter {
         return out;
     }
 
+    /** Core -> 编辑器 ParsedBone，用于导入后继续用现有编辑器/切分工具。 */
+    public static java.util.List<ParsedBone> toParsed(Map<String, CoreBone> core) {
+        java.util.List<ParsedBone> out = new java.util.ArrayList<>();
+        if (core == null) {
+            return out;
+        }
+        Map<String, ParsedBone> byName = new LinkedHashMap<>();
+        for (CoreBone bone : core.values()) {
+            ParsedBone p = new ParsedBone(bone.name);
+            p.pivotX = bone.pivot.x;
+            p.pivotY = bone.pivot.y;
+            p.pivotZ = bone.pivot.z;
+            org.joml.Vector3f e = bone.rotation.getEulerAnglesZYX(new org.joml.Vector3f());
+            p.rotX = e.x;
+            p.rotY = e.y;
+            p.rotZ = e.z;
+            for (CoreCube cube : bone.cubes) {
+                p.cubes.add(toParsedCube(cube));
+            }
+            byName.put(p.name, p);
+            out.add(p);
+        }
+        for (ParsedBone p : out) {
+            CoreBone coreBone = core.get(p.name);
+            if (coreBone == null || coreBone.parent == null || coreBone.parent.isBlank()) {
+                continue;
+            }
+            ParsedBone parent = byName.get(coreBone.parent);
+            if (parent != null) {
+                p.parent = parent;
+                parent.children.add(p);
+            }
+        }
+        return out;
+    }
+
+    public static ParsedCube toParsedCube(CoreCube cube) {
+        ParsedCube out = new ParsedCube(cube.origin.x, cube.origin.y, cube.origin.z,
+                cube.size.x, cube.size.y, cube.size.z);
+        out.inflate = cube.inflate;
+        out.mirror = cube.mirror;
+        out.pivotX = cube.pivot.x;
+        out.pivotY = cube.pivot.y;
+        out.pivotZ = cube.pivot.z;
+        org.joml.Vector3f e = cube.rotation.getEulerAnglesZYX(new org.joml.Vector3f());
+        out.rotX = e.x;
+        out.rotY = e.y;
+        out.rotZ = e.z;
+        for (int f = 0; f < 6; f++) {
+            UVUnion.FaceUV face = cube.uv == null ? null : cube.uv.face(f);
+            if (face == null) {
+                continue;
+            }
+            out.faces[f] = new float[][]{
+                    {face.corner(0)[0], face.corner(0)[1]},
+                    {face.corner(1)[0], face.corner(1)[1]},
+                    {face.corner(2)[0], face.corner(2)[1]},
+                    {face.corner(3)[0], face.corner(3)[1]}
+            };
+        }
+        return out;
+    }
+
     public static CoreBone fromBone(ParsedBone bone) {
         CoreBone out = new CoreBone();
         out.name = bone.name;
@@ -80,7 +143,12 @@ public final class CoreModelAdapter {
                 maxV = Math.max(maxV, p[1]);
             }
             if (minU != Float.MAX_VALUE) {
-                uv.face(f, minU, minV, maxU - minU, maxV - minV);
+                float[][] corners = new float[4][2];
+                for (int k = 0; k < 4; k++) {
+                    corners[k][0] = face[k][0];
+                    corners[k][1] = face[k][1];
+                }
+                uv.faces[f] = new UVUnion.FaceUV(corners);
             }
         }
         return uv;
