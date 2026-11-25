@@ -9,6 +9,7 @@ import com.yourname.combatoverhaul.client.screen.ui.EditorDraw;
 import com.yourname.combatoverhaul.combat.ActionCache;
 import com.yourname.combatoverhaul.rig.Rig;
 import com.yourname.combatoverhaul.rig.RigStore;
+import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.gui.components.EditBox;
 import com.yourname.combatoverhaul.store.ActionStore;
 import net.minecraft.client.Minecraft;
@@ -422,8 +423,11 @@ public final class HumanoidPreviewScreen extends Screen {
         }
         g.flush();
         viewport.render(g, vx0, vy0, vx1 - vx0, vy1 - vy0,
-                viewYaw, viewPitch, layers);
+                viewYaw, viewPitch, viewZoom, layers);
         g.flush();
+        RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
         if (jointMode) {
             // 关节线下一阶段直接画进 RenderTarget；这里先保留状态显示。
             g.drawString(font, "关节模式（3D overlay 待接）", listW + 8, height - 34,
@@ -435,6 +439,27 @@ public final class HumanoidPreviewScreen extends Screen {
             g.drawString(font, actions.get(actionIndex).name, listW + 8, height - 32, 0xFFFFFFFF, false);
         }
         super.render(g, mouseX, mouseY, partialTick);
+        drawRightLabels(g);
+    }
+
+    /** 兜底：某些 GUI 状态下 Button 自带文字会被纹理状态吃掉，这里直接补标签。 */
+    private void drawRightLabels(GuiGraphics g) {
+        int rw = Math.max(112, Math.min(180, width / 3));
+        int bx = width - rw + 2;
+        String[] labels = {
+                playing ? "暂停" : "播放",
+                "盔" + onOff(helmet),
+                "胸" + onOff(chest),
+                "腿" + onOff(legs),
+                "靴" + onOff(boots),
+                "关节", "加点", "删点", "保存"
+        };
+        int[] ys = {6, 28, 50, 72, 94, 116, 138, 160, 182};
+        for (int i = 0; i < labels.length; i++) {
+            int tw = font.width(labels[i]);
+            g.drawString(font, labels[i], bx + (rw - 6 - tw) / 2, ys[i] + 5,
+                    0xFFFFFFFF, false);
+        }
     }
 
     private void syncArmorVisibility() {

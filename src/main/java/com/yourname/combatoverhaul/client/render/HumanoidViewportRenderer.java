@@ -43,7 +43,7 @@ public final class HumanoidViewportRenderer {
     private int targetH;
 
     public void render(GuiGraphics g, int x, int y, int w, int h, float yaw, float pitch,
-                       List<Layer> layers) {
+                       float zoom, List<Layer> layers) {
         if (w <= 0 || h <= 0 || layers == null || layers.isEmpty()) {
             return;
         }
@@ -69,7 +69,7 @@ public final class HumanoidViewportRenderer {
         RenderSystem.applyModelViewMatrix();
 
         PoseStack pose = new PoseStack();
-        pose.translate(0f, 0.3f, -3.0f);
+        pose.translate(0f, 0.4f, -5.2f / Math.max(0.35f, zoom));
         // HumanoidModel 是 y 向下；实体渲染同样用 (-1,-1,1) 翻到世界空间。
         pose.scale(-1f, -1f, 1f);
         pose.mulPose(Axis.XP.rotationDegrees(-pitch));
