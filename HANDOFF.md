@@ -1,8 +1,8 @@
 # CombatOverhaul 交接文档
 
-最后更新：2026-11-25 20:17（Asia/Shanghai）
+最后更新：2026-11-25 21:20（Asia/Shanghai）
 工程根目录：`C:\Users\Zero\Desktop\more_damage\combatoverhaul`
-当前构建：`build/libs/combatoverhaul-1.0.0.jar`，605,492 bytes，2026-11-25 20:17:11
+当前构建：`build/libs/combatoverhaul-1.0.0.jar`，618,706 bytes，2026-11-25 21:20:38
 当前自检：`gradlew coreCheck --offline` PASS（默认 + ER + 原生 player/Alex + 多段比例切分 + source_bones + bind_bones + 双层皮肤切割 + 显式跟随映射 + 接缝柔化 + 玩家渲染回接）
 部署状态：已同步到 `E:\.minecraft\versions\DLC测试\mods\` 与 `prod_run\mods\`（SHA-256 一致）
 
@@ -300,6 +300,20 @@ bodyDelta = bodyAnim * bodyRest^-1
 - `BedrockRenderer` 的 `bodyDelta` 之前把 `root`（poseStack + 1/16）也乘进 rest/anim，导致其他 root 又乘一次 root；驴的头/腿被推出身体。现在 delta 在 identity 空间计算，只有子 root 的 parent 才乘 root。
 - `SkinnedPlayerRenderer` 之前从 `preparePlayerRender` 拿到的是“非空但全零”的 pose，`bp == null` 永远不成立，所以原版走路/使用物品 fallback 从未触发。新增 `BedrockPose.isIdentity()`，全零 pose 也走 `PlayerModel.setupAnim`。
 - 最新 jar 已同步到 `E:\.minecraft\versions\DLC测试\mods\`：605,492 bytes。
+
+**实验性 engine/core（新）**：`com.yourname.combatoverhaul.engine.core`
+```text
+Transform
+Vec3Track（LINEAR / CATMULL_ROM）
+QuatTrack（slerp）
+BoneAnimation
+Pose
+AnimationClip
+AnimationStateMachine（crossfade）
+BoneCollider（OBB contains）
+```
+CoreDataCheck 已加入 clip 采样、状态机、collider 测试，PASS。
+这是纯 Java、与 Minecraft 渲染解耦的 Spark Core 风格运行时第一版；尚未替换任何现有渲染路径。
 
 **动画缺失回退原版**：标准人形查看器先调用 `humanoid.setupAnim(player, walkAnimation.position(), speed(), ...)` 建立原版基础姿态；自定义 action 只有实际包含该骨骼通道时才覆盖。没有行走/格挡片段时，骨架继续使用原版走路/待机，不会被清成 rest pose。实机模型仍可见，但需更新布局/盔甲几何。
 
@@ -739,10 +753,10 @@ tools/draw_skeleton.py
 
 ### 6.3 验证证据
 
-已实际编译（2026-11-25 20:09，完整 build）：
+已实际编译（2026-11-25 21:20，完整 build）：
 
 ```text
-BUILD SUCCESSFUL in 27s
+BUILD SUCCESSFUL in 17s
 > Task :coreCheck
 CoreDataCheck PASS
 > Task :test

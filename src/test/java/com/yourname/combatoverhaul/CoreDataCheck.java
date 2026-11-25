@@ -10,6 +10,10 @@ import com.yourname.combatoverhaul.client.model.core.CoreBone;
 import com.yourname.combatoverhaul.client.model.core.CoreCube;
 import com.yourname.combatoverhaul.client.model.core.CoreModelAdapter;
 import com.yourname.combatoverhaul.client.model.core.CoreMeshBuilder;
+import com.yourname.combatoverhaul.engine.core.AnimationClip;
+import com.yourname.combatoverhaul.engine.core.AnimationStateMachine;
+import com.yourname.combatoverhaul.engine.core.BoneCollider;
+import com.yourname.combatoverhaul.engine.core.Pose;
 import com.yourname.combatoverhaul.client.model.ModelRigJoints;
 import com.yourname.combatoverhaul.client.model.ParsedBone;
 import com.yourname.combatoverhaul.client.model.ParsedCube;
@@ -57,6 +61,7 @@ public final class CoreDataCheck {
         followSubtreeSync();
         autoSkinSynthetic();
         sparkStyleCoreModel();
+        experimentalAnimationCore();
         armorGeometryValidationAndBounds();
         invalidWeightsAreRejected();
         missingBoneReferenceIsRejected();
@@ -1197,6 +1202,35 @@ public final class CoreDataCheck {
         check(backArm != null && backArm.cubes.size() == 1
                         && Math.abs(backArm.cubes.get(0).faces[0][0][0]) < 1e-6f,
                 "core -> parsed keeps face UV");
+    }
+
+    private static void experimentalAnimationCore() {
+        AnimationClip clip = new AnimationClip("walk");
+        clip.lengthTicks = 10f;
+        clip.bone("body").position
+                .add(0f, new Vector3f(0, 0, 0))
+                .add(10f, new Vector3f(0, 2, 0));
+        clip.bone("head").rotation
+                .add(0f, new org.joml.Quaternionf())
+                .add(10f, new org.joml.Quaternionf().rotationY((float) Math.toRadians(90)));
+        Pose mid = clip.sample(5f);
+        check(Math.abs(mid.get("body").position.y - 1f) < 1.0e-4f,
+                "animation clip position sampling");
+        check(mid.get("head") != null, "animation clip rotation sampling");
+
+        AnimationStateMachine sm = new AnimationStateMachine();
+        sm.add("idle", new AnimationClip("idle"));
+        sm.add("walk", clip);
+        sm.play("walk", 0f);
+        sm.update(2f);
+        check(sm.current().equals("walk") && sm.sample().get("body") != null,
+                "animation state machine sampling");
+
+        BoneCollider collider = new BoneCollider("head");
+        collider.center.set(0, 0, 0);
+        collider.halfExtents.set(1, 1, 1);
+        check(collider.contains(new Vector3f(0.5f, 0.5f, 0.5f)),
+                "bone collider contains point");
     }
 
     private static void armorGeometryValidationAndBounds() {
