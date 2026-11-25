@@ -43,6 +43,20 @@ public final class BedrockPose {
         return poses;
     }
 
+    /** 是否全是零增量（没有真正的自定义动作）。 */
+    public boolean isIdentity() {
+        for (BonePose p : poses.values()) {
+            if (p.position.lengthSquared() > 1.0e-10f
+                    || p.rotationRad.lengthSquared() > 1.0e-10f
+                    || Math.abs(p.scale.x - 1f) > 1.0e-6f
+                    || Math.abs(p.scale.y - 1f) > 1.0e-6f
+                    || Math.abs(p.scale.z - 1f) > 1.0e-6f) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     /** 预览用：对整份姿态做 X 反射（仅位置 x 取反，旋转保持原方向）。 */
     public void mirrorX() {
         for (BonePose p : poses.values()) {

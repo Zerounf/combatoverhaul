@@ -38,8 +38,11 @@ public final class BedrockRenderer {
         BedrockBone body = flatBody(geometry);
         Matrix4f bodyDelta = null;
         if (body != null) {
-            Matrix4f bodyRest = boneMatrix(body, root, null, true);
-            Matrix4f bodyAnim = boneMatrix(body, root, pose, false);
+            // delta 必须是模型空间增量；不能把 root 乘进去，否则其他 root
+            // 会额外再乘一次 root（1/16 + poseStack），头/腿被推出身体。
+            Matrix4f identity = new Matrix4f();
+            Matrix4f bodyRest = boneMatrix(body, identity, null, true);
+            Matrix4f bodyAnim = boneMatrix(body, identity, pose, false);
             bodyDelta = new Matrix4f(bodyAnim).mul(new Matrix4f(bodyRest).invert());
         }
         boolean any = false;

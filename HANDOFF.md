@@ -1,8 +1,8 @@
 # CombatOverhaul 交接文档
 
-最后更新：2026-11-25 20:09（Asia/Shanghai）
+最后更新：2026-11-25 20:17（Asia/Shanghai）
 工程根目录：`C:\Users\Zero\Desktop\more_damage\combatoverhaul`
-当前构建：`build/libs/combatoverhaul-1.0.0.jar`，605,247 bytes，2026-11-25 20:09:20
+当前构建：`build/libs/combatoverhaul-1.0.0.jar`，605,492 bytes，2026-11-25 20:17:11
 当前自检：`gradlew coreCheck --offline` PASS（默认 + ER + 原生 player/Alex + 多段比例切分 + source_bones + bind_bones + 双层皮肤切割 + 显式跟随映射 + 接缝柔化 + 玩家渲染回接）
 部署状态：已同步到 `E:\.minecraft\versions\DLC测试\mods\` 与 `prod_run\mods\`（SHA-256 一致）
 
@@ -295,6 +295,11 @@ bodyDelta = bodyAnim * bodyRest^-1
 **自定义盔甲改成刚性 source_map 跟随（20:09）**：`SkinnedMeshRenderer.renderRigid` 按每个顶点的 `source_bones + source_map` 直接乘一根玩家骨骼的 skin 矩阵，不再使用 `SkinWeightGenerator` 的权重混合。
 原因：胸甲只有一个 `armor_chest -> body` 映射，但自动蒙皮会按最近骨段把部分顶点分给别的 body 分段，导致胸甲被拉低/变形。现在盔甲位置严格等于 JSON 模型位置，并随映射骨骼运动。
 构建 605,247 bytes。
+
+**20:17 关键修正**：
+- `BedrockRenderer` 的 `bodyDelta` 之前把 `root`（poseStack + 1/16）也乘进 rest/anim，导致其他 root 又乘一次 root；驴的头/腿被推出身体。现在 delta 在 identity 空间计算，只有子 root 的 parent 才乘 root。
+- `SkinnedPlayerRenderer` 之前从 `preparePlayerRender` 拿到的是“非空但全零”的 pose，`bp == null` 永远不成立，所以原版走路/使用物品 fallback 从未触发。新增 `BedrockPose.isIdentity()`，全零 pose 也走 `PlayerModel.setupAnim`。
+- 最新 jar 已同步到 `E:\.minecraft\versions\DLC测试\mods\`：605,492 bytes。
 
 **动画缺失回退原版**：标准人形查看器先调用 `humanoid.setupAnim(player, walkAnimation.position(), speed(), ...)` 建立原版基础姿态；自定义 action 只有实际包含该骨骼通道时才覆盖。没有行走/格挡片段时，骨架继续使用原版走路/待机，不会被清成 rest pose。实机模型仍可见，但需更新布局/盔甲几何。
 

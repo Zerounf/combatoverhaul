@@ -37,7 +37,7 @@ public final class SkinnedPlayerRenderer {
         pose.translate(0.0F, -1.501F, 0.0F);
 
         BedrockPose bp = ClientAnimHandler.currentRenderPose();
-        boolean vanillaFallback = bp == null || bp.all().isEmpty();
+        boolean vanillaFallback = bp == null || bp.all().isEmpty() || bp.isIdentity();
         if (vanillaFallback) {
             // 没有自定义动作时，必须补原版 PlayerModel.setupAnim：
             // 走路、手臂摆动、使用物品、头部注视都在这里；否则自绘玩家是僵硬的。
