@@ -16,9 +16,6 @@ import net.minecraft.world.entity.player.Player;
 /** 完全替换玩家原版 PlayerModel 的 16 骨连续蒙皮渲染。 */
 public final class SkinnedPlayerRenderer {
 
-    private static net.minecraft.client.model.PlayerModel<Player> vanillaModel;
-    private static boolean vanillaSlim;
-
     private SkinnedPlayerRenderer() {
     }
 
@@ -37,26 +34,22 @@ public final class SkinnedPlayerRenderer {
         pose.translate(0.0F, -1.501F, 0.0F);
 
         BedrockPose bp = ClientAnimHandler.currentRenderPose();
-        boolean vanillaFallback = bp == null || bp.all().isEmpty() || bp.isIdentity();
-        if (vanillaFallback) {
-            // 没有自定义动作时，必须补原版 PlayerModel.setupAnim：
-            // 走路、手臂摆动、使用物品、头部注视都在这里；否则自绘玩家是僵硬的。
-            bp = vanillaPlayerPose(player, model, partialTick);
-        } else {
-            applyHeadLook(player, model, bp, partialTick);
+        if (bp == null) {
+            model.syncFollow();
+            bp = BedrockPose.fromAnim(model);
         }
+        applyHeadLook(player, model, bp, partialTick);
         Minecraft mc = Minecraft.getInstance();
         net.minecraft.resources.ResourceLocation skin = player instanceof net.minecraft.client.player.AbstractClientPlayer acp
                 ? acp.getSkinTextureLocation()
                 : mc.player.getSkinTextureLocation();
         VertexConsumer vc = buffers.getBuffer(
                 RenderType.entityCutoutNoCull(skin));
-        // 和原版实体一样使用世界传入的 packed light，让皮肤受环境光影响。
-        // 玩家原生模型是 6 个刚性 part；自动蒙皮会把手臂顶点分到 body/肩段，
-        // 导致手臂离开肩膀。这里按 source_bone 直接跟随，和 Spark 的 bone-local
-        // 模型语义一致；手肘/膝盖的分段在模型树里已经存在时仍由各自 bone 驱动。
-        SkinnedMeshRenderer.renderRigid(vc, pose, model, model.skinnedMesh, bp,
-                light, OverlayTexture.NO_OVERLAY, java.util.Map.of());
+        // 恢复旧 jar 已验证的玩家皮肤路径：连续权重蒙皮。
+        // 走路/使用物品的 setupAnim fallback 与 renderRigid 都先回退，避免 Alex
+        // 手臂离开肩膀；确认基础模型恢复后再单独加动画。
+        SkinnedMeshRenderer.render(vc, pose, model, model.skinnedMesh, bp,
+                light, OverlayTexture.NO_OVERLAY);
         if (buffers instanceof MultiBufferSource.BufferSource bs) {
             bs.endBatch();
         }
@@ -64,29 +57,6 @@ public final class SkinnedPlayerRenderer {
         renderHand(pose, buffers, light, player.getOffhandItem(), "hand_l", false, model, bp);
         SkinnedArmorRenderer.render(player, pose, buffers, light, bp);
         pose.popPose();
-    }
-
-    private static BedrockPose vanillaPlayerPose(Player player, ParsedModel model,
-                                                 float partialTick) {
-        Minecraft mc = Minecraft.getInstance();
-        boolean slim = ClientAnimHandler.isSlimPlayer(player);
-        if (vanillaModel == null || vanillaSlim != slim) {
-            var layer = mc.getEntityModels().bakeLayer(slim
-                    ? net.minecraft.client.model.geom.ModelLayers.PLAYER_SLIM
-                    : net.minecraft.client.model.geom.ModelLayers.PLAYER);
-            vanillaModel = new net.minecraft.client.model.PlayerModel<>(layer, slim);
-            vanillaModel.young = false;
-            vanillaSlim = slim;
-        }
-        float limbSwing = player.walkAnimation.position(partialTick);
-        float limbAmount = player.walkAnimation.speed(partialTick);
-        float age = player.tickCount + partialTick;
-        float netHeadYaw = net.minecraft.util.Mth.rotLerp(partialTick,
-                player.yHeadRotO, player.yHeadRot) - net.minecraft.util.Mth.rotLerp(partialTick,
-                player.yBodyRotO, player.yBodyRot);
-        float headPitch = net.minecraft.util.Mth.lerp(partialTick, player.xRotO, player.getXRot());
-        vanillaModel.setupAnim(player, limbSwing, limbAmount, age, netHeadYaw, headPitch);
-        return BedrockPose.fromPlayerModel(vanillaModel, model);
     }
 
     /**
