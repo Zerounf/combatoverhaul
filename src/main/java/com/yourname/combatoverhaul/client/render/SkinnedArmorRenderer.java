@@ -305,7 +305,9 @@ public final class SkinnedArmorRenderer {
                     }
                 }
             }
-            alignToSkeleton(model.skinnedMesh, skeleton, armor.getEquipmentSlot());
+            // 盔甲几何的 origin/pivot 就是作者模型的位置，不能再按玩家 AABB 重新居中。
+            // 之前这里把胸甲整体平移到玩家包围盒中心，导致游戏内盔甲位置不对。
+            CombatOverhaulMod.LOGGER.info("[ArmorRender] keep model-space placement {}", id);
             // 显式 source_map 是作者语义，不能被“最近关节”覆盖。
             // 之前 body 被最近点分类成 f_102808_（head），导致胸甲跟着头转。
             if (model.sourceMap.isEmpty()) {

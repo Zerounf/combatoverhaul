@@ -463,12 +463,13 @@ public final class HumanoidPreviewScreen extends Screen {
     }
 
     private void syncArmorVisibility() {
-        copyArmor("head", armorOuter.head, armorInner.head);
-        copyArmor("body", armorOuter.body, armorInner.body);
-        copyArmor("right_arm", armorOuter.rightArm, armorInner.rightArm);
-        copyArmor("left_arm", armorOuter.leftArm, armorInner.leftArm);
-        copyArmor("right_leg", armorOuter.rightLeg, armorInner.rightLeg);
-        copyArmor("left_leg", armorOuter.leftLeg, armorInner.leftLeg);
+        // 盔甲必须复用玩家 part 的原始 pivot/旋转/缩放，而不是只复制动画旋转。
+        copyPart(humanoid.head, armorOuter.head, armorInner.head);
+        copyPart(humanoid.body, armorOuter.body, armorInner.body);
+        copyPart(humanoid.rightArm, armorOuter.rightArm, armorInner.rightArm);
+        copyPart(humanoid.leftArm, armorOuter.leftArm, armorInner.leftArm);
+        copyPart(humanoid.rightLeg, armorOuter.rightLeg, armorInner.rightLeg);
+        copyPart(humanoid.leftLeg, armorOuter.leftLeg, armorInner.leftLeg);
         armorOuter.setAllVisible(false);
         armorOuter.head.visible = helmet;
         armorOuter.body.visible = chest;
@@ -483,10 +484,27 @@ public final class HumanoidPreviewScreen extends Screen {
         armorInner.leftLeg.visible = legs;
     }
 
-    private void copyArmor(String semantic, net.minecraft.client.model.geom.ModelPart outer,
-                           net.minecraft.client.model.geom.ModelPart inner) {
-        copy(semantic, outer);
-        copy(semantic, inner);
+    private void copyPart(net.minecraft.client.model.geom.ModelPart src,
+                          net.minecraft.client.model.geom.ModelPart outer,
+                          net.minecraft.client.model.geom.ModelPart inner) {
+        copyPart(src, outer);
+        copyPart(src, inner);
+    }
+
+    private void copyPart(net.minecraft.client.model.geom.ModelPart src,
+                          net.minecraft.client.model.geom.ModelPart dst) {
+        if (src == null || dst == null) {
+            return;
+        }
+        dst.x = src.x;
+        dst.y = src.y;
+        dst.z = src.z;
+        dst.xRot = src.xRot;
+        dst.yRot = src.yRot;
+        dst.zRot = src.zRot;
+        dst.xScale = src.xScale;
+        dst.yScale = src.yScale;
+        dst.zScale = src.zScale;
     }
 
     private void renderJoints(GuiGraphics g, double cx, double cy, double scale) {
