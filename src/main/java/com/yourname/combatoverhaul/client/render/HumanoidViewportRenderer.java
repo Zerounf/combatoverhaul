@@ -61,9 +61,12 @@ public final class HumanoidViewportRenderer {
         RenderSystem.disableDepthTest();
         RenderSystem.disableCull();
 
-        Matrix4f projection = new Matrix4f().setPerspective(
-                (float) Math.toRadians(45f), (float) w / (float) h, 0.05f, 100f);
-        RenderSystem.setProjectionMatrix(projection, VertexSorting.DISTANCE_TO_ORIGIN);
+        // 模型预览用正交投影：头/身比例不会被近距离透视放大，滚动只改变取景范围。
+        float halfH = 1.35f / Math.max(0.35f, zoom);
+        float halfW = halfH * ((float) w / (float) h);
+        Matrix4f projection = new Matrix4f().ortho(
+                -halfW, halfW, -halfH, halfH, -100f, 100f);
+        RenderSystem.setProjectionMatrix(projection, VertexSorting.ORTHOGRAPHIC_Z);
         RenderSystem.getModelViewStack().pushPose();
         RenderSystem.getModelViewStack().setIdentity();
         RenderSystem.applyModelViewMatrix();
