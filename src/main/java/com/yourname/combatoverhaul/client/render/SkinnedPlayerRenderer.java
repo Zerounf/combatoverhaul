@@ -16,6 +16,9 @@ import net.minecraft.world.entity.player.Player;
 /** 完全替换玩家原版 PlayerModel 的 16 骨连续蒙皮渲染。 */
 public final class SkinnedPlayerRenderer {
 
+    private static net.minecraft.client.model.PlayerModel<Player> vanillaModel;
+    private static boolean vanillaSlim;
+
     private SkinnedPlayerRenderer() {
     }
 
@@ -34,11 +37,14 @@ public final class SkinnedPlayerRenderer {
         pose.translate(0.0F, -1.501F, 0.0F);
 
         BedrockPose bp = ClientAnimHandler.currentRenderPose();
-        if (bp == null) {
-            model.syncFollow();
-            bp = BedrockPose.fromAnim(model);
+        boolean vanillaFallback = bp == null || bp.all().isEmpty();
+        if (vanillaFallback) {
+            // 没有自定义动作时，必须补原版 PlayerModel.setupAnim：
+            // 走路、手臂摆动、使用物品、头部注视都在这里；否则自绘玩家是僵硬的。
+            bp = vanillaPlayerPose(player, model, partialTick);
+        } else {
+            applyHeadLook(player, model, bp, partialTick);
         }
-        applyHeadLook(player, model, bp, partialTick);
         Minecraft mc = Minecraft.getInstance();
         net.minecraft.resources.ResourceLocation skin = player instanceof net.minecraft.client.player.AbstractClientPlayer acp
                 ? acp.getSkinTextureLocation()
@@ -55,6 +61,29 @@ public final class SkinnedPlayerRenderer {
         renderHand(pose, buffers, light, player.getOffhandItem(), "hand_l", false, model, bp);
         SkinnedArmorRenderer.render(player, pose, buffers, light, bp);
         pose.popPose();
+    }
+
+    private static BedrockPose vanillaPlayerPose(Player player, ParsedModel model,
+                                                 float partialTick) {
+        Minecraft mc = Minecraft.getInstance();
+        boolean slim = ClientAnimHandler.isSlimPlayer(player);
+        if (vanillaModel == null || vanillaSlim != slim) {
+            var layer = mc.getEntityModels().bakeLayer(slim
+                    ? net.minecraft.client.model.geom.ModelLayers.PLAYER_SLIM
+                    : net.minecraft.client.model.geom.ModelLayers.PLAYER);
+            vanillaModel = new net.minecraft.client.model.PlayerModel<>(layer, slim);
+            vanillaModel.young = false;
+            vanillaSlim = slim;
+        }
+        float limbSwing = player.walkAnimation.position(partialTick);
+        float limbAmount = player.walkAnimation.speed(partialTick);
+        float age = player.tickCount + partialTick;
+        float netHeadYaw = net.minecraft.util.Mth.rotLerp(partialTick,
+                player.yHeadRotO, player.yHeadRot) - net.minecraft.util.Mth.rotLerp(partialTick,
+                player.yBodyRotO, player.yBodyRot);
+        float headPitch = net.minecraft.util.Mth.lerp(partialTick, player.xRotO, player.getXRot());
+        vanillaModel.setupAnim(player, limbSwing, limbAmount, age, netHeadYaw, headPitch);
+        return BedrockPose.fromPlayerModel(vanillaModel, model);
     }
 
     /**

@@ -49,8 +49,26 @@ public final class SkinnedMeshRenderer {
         model.syncFollow();
         Map<ParsedBone, Matrix4f> rest = new IdentityHashMap<>();
         Map<ParsedBone, Matrix4f> animated = new IdentityHashMap<>();
-        for (ParsedBone root : model.roots) {
-            build(root, null, null, rest, animated, animPose);
+        ParsedBone flatBody = flatBody(model);
+        if (flatBody != null) {
+            // 原版 Quadruped/Player 扫描出的 body/head/legs 是平级根。
+            // 动画只转 body 时，头/前腿会留在地上；这里把 body 的 rest/anim
+            // 作为其他根的父矩阵，等价于把它们挂到 body 下，但不改 JSON 树。
+            build(flatBody, null, null, rest, animated, animPose);
+            Matrix4f bodyRest = rest.get(flatBody);
+            Matrix4f bodyAnim = animated.get(flatBody);
+            for (ParsedBone root : model.roots) {
+                if (root != flatBody) {
+                    build(root,
+                            bodyRest == null ? null : new Matrix4f(bodyRest),
+                            bodyAnim == null ? null : new Matrix4f(bodyAnim),
+                            rest, animated, animPose);
+                }
+            }
+        } else {
+            for (ParsedBone root : model.roots) {
+                build(root, null, null, rest, animated, animPose);
+            }
         }
         int n = model.bones.size();
         Matrix4f[] skin = new Matrix4f[n];
@@ -134,6 +152,35 @@ public final class SkinnedMeshRenderer {
                         .endVertex();
             }
         }
+    }
+
+    /** 扁平扫描模型（原版 Quadruped/Player）的躯干根；优先 alias/body，其次最大 cube。 */
+    private static ParsedBone flatBody(ParsedModel model) {
+        if (model == null || model.roots.size() < 2) {
+            return null;
+        }
+        for (ParsedBone root : model.roots) {
+            String semantic = model.semanticName(root.name);
+            if ("body".equalsIgnoreCase(semantic) || "torso".equalsIgnoreCase(semantic)
+                    || "chest".equalsIgnoreCase(semantic)) {
+                return root;
+            }
+        }
+        ParsedBone best = null;
+        float bestVolume = -1f;
+        for (ParsedBone root : model.roots) {
+            float[] b = root.cubeBounds();
+            if (b == null) {
+                continue;
+            }
+            float volume = Math.max(0f, b[3] - b[0]) * Math.max(0f, b[4] - b[1])
+                    * Math.max(0f, b[5] - b[2]);
+            if (volume > bestVolume) {
+                bestVolume = volume;
+                best = root;
+            }
+        }
+        return bestVolume > 0f ? best : null;
     }
 
     private static void build(ParsedBone bone, Matrix4f restParent, Matrix4f animParent,

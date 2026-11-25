@@ -1,8 +1,8 @@
 # CombatOverhaul 交接文档
 
-最后更新：2026-11-25 19:49（Asia/Shanghai）
+最后更新：2026-11-25 19:56（Asia/Shanghai）
 工程根目录：`C:\Users\Zero\Desktop\more_damage\combatoverhaul`
-当前构建：`build/libs/combatoverhaul-1.0.0.jar`，601,729 bytes，2026-11-25 19:49:33
+当前构建：`build/libs/combatoverhaul-1.0.0.jar`，603,241 bytes，2026-11-25 19:56:30
 当前自检：`gradlew coreCheck --offline` PASS（默认 + ER + 原生 player/Alex + 多段比例切分 + source_bones + bind_bones + 双层皮肤切割 + 显式跟随映射 + 接缝柔化 + 玩家渲染回接）
 部署状态：已同步到 `E:\.minecraft\versions\DLC测试\mods\` 与 `prod_run\mods\`（SHA-256 一致）
 
@@ -266,6 +266,18 @@ skeleton=[-7.25, -8.5, -4.5, 7.25, 24.0, 4.5]
 source=body
 ```
 说明几何/绑定范围正确；若外观仍异常，先检查该 JSON 的 UV 是否采样到正确纹理区域。
+
+**扁平根骨骼连接（驴/原版四足）**：原版扫描出的 `body/head/legs` 是平级根。动画只转 body 时，头/前腿留在地上。
+`SkinnedMeshRenderer.render` 现在识别扁平躯干根：
+```text
+优先 semantic body/torso/chest
+否则取 cube 体积最大的根
+把 body 的 rest/anim 作为其他根的父矩阵传入 build()
+```
+等价于在渲染/蒙皮时把它们挂到 body 下，不修改 JSON 树。驴抬起身体时，头和前腿会跟躯干一起动。
+
+**玩家程序动画回退（新）**：`SkinnedPlayerRenderer` 在没有自定义动作/空 pose 时，调用缓存的原版 `PlayerModel.setupAnim`（走路、摆臂、使用物品、头部注视），再用 `BedrockPose.fromPlayerModel` 转成骨骼 pose。
+之前自绘玩家只读自定义动作，没动作时就是僵直站姿。
 
 **动画缺失回退原版**：标准人形查看器先调用 `humanoid.setupAnim(player, walkAnimation.position(), speed(), ...)` 建立原版基础姿态；自定义 action 只有实际包含该骨骼通道时才覆盖。没有行走/格挡片段时，骨架继续使用原版走路/待机，不会被清成 rest pose。实机模型仍可见，但需更新布局/盔甲几何。
 
@@ -705,10 +717,10 @@ tools/draw_skeleton.py
 
 ### 6.3 验证证据
 
-已实际编译（2026-11-25 19:49，完整 build）：
+已实际编译（2026-11-25 19:56，完整 build）：
 
 ```text
-BUILD SUCCESSFUL in 29s
+BUILD SUCCESSFUL in 21s
 > Task :coreCheck
 CoreDataCheck PASS
 > Task :test
