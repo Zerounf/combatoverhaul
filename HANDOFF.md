@@ -1,8 +1,8 @@
 # CombatOverhaul 交接文档
 
-最后更新：2026-11-25 19:39（Asia/Shanghai）
+最后更新：2026-11-25 19:44（Asia/Shanghai）
 工程根目录：`C:\Users\Zero\Desktop\more_damage\combatoverhaul`
-当前构建：`build/libs/combatoverhaul-1.0.0.jar`，601,443 bytes，2026-11-25 19:39:49
+当前构建：`build/libs/combatoverhaul-1.0.0.jar`，601,492 bytes，2026-11-25 19:44:44
 当前自检：`gradlew coreCheck --offline` PASS（默认 + ER + 原生 player/Alex + 多段比例切分 + source_bones + bind_bones + 双层皮肤切割 + 显式跟随映射 + 接缝柔化 + 玩家渲染回接）
 部署状态：已同步到 `E:\.minecraft\versions\DLC测试\mods\` 与 `prod_run\mods\`（SHA-256 一致）
 
@@ -246,6 +246,17 @@ humanoid.copyPropertiesTo(armorOuter);
 humanoid.copyPropertiesTo(armorInner);
 ```
 这与 `HumanoidArmorLayer` 一致。`SkinnedArmorRenderer.renderVanillaFallback` 的 `copyPart` 也补齐了 x/y/z 与 xScale/yScale/zScale，避免自定义玩家骨架的肩/髋位置变化后盔甲留在旧位置。
+
+**幼年缩放 bug（关键）**：`EntityModel` 构造器默认 `young = true`，而 Viewer 从未像 `LivingEntityRenderer` 那样设置 `model.young = false`。
+结果 `AgeableListModel.renderToBuffer` 走幼年分支：头放大、身体缩半、腿缩短；盔甲层同样默认幼年，位置自然全错。
+已修：
+```java
+humanoid.young = false;
+armorOuter.young = false;
+armorInner.young = false;
+```
+`SkinnedArmorRenderer.renderVanillaFallback` 的 `HumanoidArmorModel` 也显式 `young = false`。
+实机 `viewer_adult.png` 已恢复成人头身比；正交 halfH 调到 1.55 以完整显示腿。
 
 **动画缺失回退原版**：标准人形查看器先调用 `humanoid.setupAnim(player, walkAnimation.position(), speed(), ...)` 建立原版基础姿态；自定义 action 只有实际包含该骨骼通道时才覆盖。没有行走/格挡片段时，骨架继续使用原版走路/待机，不会被清成 rest pose。实机模型仍可见，但需更新布局/盔甲几何。
 
@@ -685,10 +696,10 @@ tools/draw_skeleton.py
 
 ### 6.3 验证证据
 
-已实际编译（2026-11-25 19:39，完整 build）：
+已实际编译（2026-11-25 19:44，完整 build）：
 
 ```text
-BUILD SUCCESSFUL in 36s
+BUILD SUCCESSFUL in 33s
 > Task :coreCheck
 CoreDataCheck PASS
 > Task :test

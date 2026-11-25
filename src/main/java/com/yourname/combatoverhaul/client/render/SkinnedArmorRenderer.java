@@ -373,6 +373,9 @@ public final class SkinnedArmorRenderer {
                 : (slim ? ModelLayers.PLAYER_SLIM_OUTER_ARMOR : ModelLayers.PLAYER_OUTER_ARMOR);
         HumanoidModel<Player> model = new net.minecraft.client.model.HumanoidArmorModel<>(
                 Minecraft.getInstance().getEntityModels().bakeLayer(layerLocation));
+        // EntityModel 默认 young=true。盔甲 fallback 必须明确关闭，
+        // 否则会走 AgeableListModel 的幼年头大/身短缩放，位置自然全错。
+        model.young = false;
         ParsedModel pm = ClientAnimHandler.currentRenderModel();
         if (pm != null) {
             copyPart(pm, "head", model.head);

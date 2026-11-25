@@ -82,6 +82,11 @@ public final class HumanoidPreviewScreen extends Screen {
                 slim ? ModelLayers.PLAYER_SLIM_INNER_ARMOR : ModelLayers.PLAYER_INNER_ARMOR);
         armorOuter = new net.minecraft.client.model.HumanoidArmorModel<>(outerLayer);
         armorInner = new net.minecraft.client.model.HumanoidArmorModel<>(innerLayer);
+        // EntityModel 构造器默认 young=true；不关会走 AgeableListModel 的幼年缩放：
+        // 头放大 1.5/2、身体缩半、腿缩短，看起来就是幼年僵尸。
+        humanoid.young = false;
+        armorOuter.young = false;
+        armorInner.young = false;
         actions.addAll(ActionStore.load("minecraft", modelPath, false));
         ActionCache.Entry e = ActionCache.get(ActionCache.keyFor("minecraft", modelPath, false));
         poseModel = e == null ? null : e.model;
