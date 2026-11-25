@@ -9,6 +9,7 @@ import com.yourname.combatoverhaul.client.model.BoneSplitter;
 import com.yourname.combatoverhaul.client.model.core.CoreBone;
 import com.yourname.combatoverhaul.client.model.core.CoreCube;
 import com.yourname.combatoverhaul.client.model.core.CoreModelAdapter;
+import com.yourname.combatoverhaul.client.model.core.CoreMeshBuilder;
 import com.yourname.combatoverhaul.client.model.ModelRigJoints;
 import com.yourname.combatoverhaul.client.model.ParsedBone;
 import com.yourname.combatoverhaul.client.model.ParsedCube;
@@ -1183,6 +1184,10 @@ public final class CoreDataCheck {
         Matrix4f global = coreArm.globalTransform(bones);
         check(Float.isFinite(global.m30()) && Float.isFinite(global.m31()),
                 "core global transform finite");
+
+        SkinnedMesh coreMesh = CoreMeshBuilder.build(bones);
+        check(coreMesh.vertices.size() == 4 && coreMesh.faces.size() == 1,
+                "core mesh builds one visible face");
     }
 
     private static void armorGeometryValidationAndBounds() {

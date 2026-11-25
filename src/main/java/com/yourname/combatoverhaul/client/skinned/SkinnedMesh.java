@@ -36,7 +36,7 @@ public final class SkinnedMesh {
     public static final class Vertex {
         public final float x, y, z, u, v;
 
-        Vertex(float x, float y, float z, float u, float v) {
+        public Vertex(float x, float y, float z, float u, float v) {
             this.x = x;
             this.y = y;
             this.z = z;

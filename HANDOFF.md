@@ -1,8 +1,8 @@
 # CombatOverhaul 交接文档
 
-最后更新：2026-11-25 18:12（Asia/Shanghai）
+最后更新：2026-11-25 18:14（Asia/Shanghai）
 工程根目录：`C:\Users\Zero\Desktop\more_damage\combatoverhaul`
-当前构建：`build/libs/combatoverhaul-1.0.0.jar`，596,223 bytes，2026-11-25 18:12:37
+当前构建：`build/libs/combatoverhaul-1.0.0.jar`，598,690 bytes，2026-11-25 18:13:59
 当前自检：`gradlew coreCheck --offline` PASS（默认 + ER + 原生 player/Alex + 多段比例切分 + source_bones + bind_bones + 双层皮肤切割 + 显式跟随映射 + 接缝柔化 + 玩家渲染回接）
 部署状态：已同步到 `E:\.minecraft\versions\DLC测试\mods\` 与 `prod_run\mods\`（SHA-256 一致）
 
@@ -205,6 +205,14 @@ client/model/core/CoreModelAdapter
 - CoreDataCheck 增加 core 层级、inflate、mirror、face UV、global transform 测试，PASS。
 自由切骨骼 `BoneSplitter`/`DefaultLimbRig`/手动关节点未改动。
 补充：`CoreModelAdapter.fromJson(JsonObject)` 让 Bedrock/内部 JSON 可直接产出 core；`CubeMeshBuilder` 对没有 `face_verts` 的 cube 使用 `inflate` 扩展几何，Bedrock 已烘焙 face_verts 的模型不受影响。构建 596,223 bytes。
+
+**CoreMeshBuilder（新）**：`client/model/core/CoreMeshBuilder` 可以把 `Map<String,CoreBone>` 直接生成 `SkinnedMesh`：
+- 使用 CoreBone global transform；
+- CoreCube local transform；
+- inflate / mirror / FACES UV；
+- 不限制骨骼数量和自由切分。
+CoreDataCheck 已覆盖单面 core mesh 顶点/面生成。`SkinnedMesh.Vertex` 构造器改为 public 以便 core 使用。
+注意：目前 CoreMeshBuilder 是数据/测试可用，游戏渲染和 Bedrock 导入还没有全面切换到 core。
 
 **动画缺失回退原版**：标准人形查看器先调用 `humanoid.setupAnim(player, walkAnimation.position(), speed(), ...)` 建立原版基础姿态；自定义 action 只有实际包含该骨骼通道时才覆盖。没有行走/格挡片段时，骨架继续使用原版走路/待机，不会被清成 rest pose。实机模型仍可见，但需更新布局/盔甲几何。
 
@@ -644,10 +652,10 @@ tools/draw_skeleton.py
 
 ### 6.3 验证证据
 
-已实际编译（2026-11-25 18:12，完整 build）：
+已实际编译（2026-11-25 18:14，完整 build）：
 
 ```text
-BUILD SUCCESSFUL in 24s
+BUILD SUCCESSFUL in 23s
 > Task :coreCheck
 CoreDataCheck PASS
 > Task :test
