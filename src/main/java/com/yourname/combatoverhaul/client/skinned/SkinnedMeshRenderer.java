@@ -247,6 +247,11 @@ public final class SkinnedMeshRenderer {
         if (model == null || model.roots.size() < 2) {
             return null;
         }
+        // 玩家的 flat root 由原版 setupAnim + BedrockPose 绝对姿势处理；
+        // 再叠 bodyDelta 会把手臂从肩膀上推出去。
+        if ("minecraft:player".equals(model.entityId)) {
+            return null;
+        }
         for (ParsedBone root : model.roots) {
             String semantic = model.semanticName(root.name);
             if ("body".equalsIgnoreCase(semantic) || "torso".equalsIgnoreCase(semantic)
