@@ -1,5 +1,6 @@
 package com.yourname.combatoverhaul.client.model.core;
 
+import com.google.gson.JsonObject;
 import com.yourname.combatoverhaul.client.model.ParsedBone;
 import com.yourname.combatoverhaul.client.model.ParsedCube;
 import com.yourname.combatoverhaul.client.model.ParsedModel;
@@ -16,6 +17,11 @@ import java.util.Map;
 public final class CoreModelAdapter {
 
     private CoreModelAdapter() {
+    }
+
+    /** Bedrock/内部 JSON -> 编辑器 ParsedModel -> Spark core。 */
+    public static Map<String, CoreBone> fromJson(JsonObject json) {
+        return fromParsed(ParsedModel.parse(json));
     }
 
     public static Map<String, CoreBone> fromParsed(ParsedModel model) {

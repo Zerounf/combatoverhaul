@@ -21,7 +21,7 @@ public final class ParsedCube {
     /** 每面 4 角的 (min/max) 选择：索引与 FACE_NAMES 语义一致（3=east、4=north），
      * 每面内部顶点顺序与 vanilla ModelPart.Cube 对应多边形的顶点顺序一致（未镜像情形），
      * 因此导出文件中的 UV 可与这里给出的角点直接配对，还原正确的贴图朝向。 */
-    static final int[][][] CORNER_LAYOUT = {
+    public static final int[][][] CORNER_LAYOUT = {
             {{1, 0, 1}, {0, 0, 1}, {0, 0, 0}, {1, 0, 0}},   // down:  V101,V001,V000,V100
             {{1, 1, 0}, {0, 1, 0}, {0, 1, 1}, {1, 1, 1}},   // up:    V110,V010,V011,V111
             {{0, 0, 0}, {0, 0, 1}, {0, 1, 1}, {0, 1, 0}},   // west:  V000,V001,V011,V010

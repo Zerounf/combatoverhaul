@@ -143,11 +143,20 @@ public final class CubeMeshBuilder {
                     cube.vertComp(face, corner, 2)
             };
         }
-        float x = cube.cornerX(face, corner);
-        float y = cube.cornerY(face, corner);
-        float z = cube.cornerZ(face, corner);
+        float x0 = cube.originX - cube.inflate;
+        float x1 = cube.originX + cube.sizeX + cube.inflate;
+        float y0 = cube.originY - cube.inflate;
+        float y1 = cube.originY + cube.sizeY + cube.inflate;
+        float z0 = cube.originZ - cube.inflate;
+        float z1 = cube.originZ + cube.sizeZ + cube.inflate;
+        int ix = ParsedCube.CORNER_LAYOUT[face][corner][0];
+        int iy = ParsedCube.CORNER_LAYOUT[face][corner][1];
+        int iz = ParsedCube.CORNER_LAYOUT[face][corner][2];
+        float x = ix == 0 ? x0 : x1;
+        float y = iy == 0 ? y0 : y1;
+        float z = iz == 0 ? z0 : z1;
         if (cube.mirror) {
-            x = cube.originX * 2 + cube.sizeX - x;
+            x = x0 + x1 - x;
         }
         return new float[]{x, y, z};
     }
