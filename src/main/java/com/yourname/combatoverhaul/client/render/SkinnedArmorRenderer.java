@@ -58,6 +58,10 @@ public final class SkinnedArmorRenderer {
 
     public static void render(Player player, PoseStack pose, MultiBufferSource buffers, int light,
                               BedrockPose poseData) {
+        // 盔甲层必须参与深度测试，否则会无条件覆盖玩家/前面的盔甲。
+        com.mojang.blaze3d.systems.RenderSystem.enableDepthTest();
+        com.mojang.blaze3d.systems.RenderSystem.depthMask(true);
+        com.mojang.blaze3d.systems.RenderSystem.depthFunc(515); // GL_LEQUAL
         for (EquipmentSlot slot : new EquipmentSlot[]{
                 EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET}) {
             ItemStack stack = player.getItemBySlot(slot);
@@ -326,6 +330,11 @@ public final class SkinnedArmorRenderer {
                 out.failed = true;
                 return out;
             }
+            CombatOverhaulMod.LOGGER.info("[ArmorRender] bounds armor={} skeleton={} source={}",
+                    java.util.Arrays.toString(model.skinnedMesh.bounds()),
+                    java.util.Arrays.toString(skeleton.skinnedMesh.bounds()),
+                    model.skinnedMesh.sourceBones.isEmpty() ? "-"
+                            : model.skinnedMesh.sourceBones.get(0));
             out.model = model;
             out.mesh = model.skinnedMesh;
             out.boundSkeleton = skeleton;

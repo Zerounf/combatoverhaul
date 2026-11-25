@@ -1,8 +1,8 @@
 # CombatOverhaul 交接文档
 
-最后更新：2026-11-25 19:44（Asia/Shanghai）
+最后更新：2026-11-25 19:49（Asia/Shanghai）
 工程根目录：`C:\Users\Zero\Desktop\more_damage\combatoverhaul`
-当前构建：`build/libs/combatoverhaul-1.0.0.jar`，601,492 bytes，2026-11-25 19:44:44
+当前构建：`build/libs/combatoverhaul-1.0.0.jar`，601,729 bytes，2026-11-25 19:49:33
 当前自检：`gradlew coreCheck --offline` PASS（默认 + ER + 原生 player/Alex + 多段比例切分 + source_bones + bind_bones + 双层皮肤切割 + 显式跟随映射 + 接缝柔化 + 玩家渲染回接）
 部署状态：已同步到 `E:\.minecraft\versions\DLC测试\mods\` 与 `prod_run\mods\`（SHA-256 一致）
 
@@ -257,6 +257,15 @@ armorInner.young = false;
 ```
 `SkinnedArmorRenderer.renderVanillaFallback` 的 `HumanoidArmorModel` 也显式 `young = false`。
 实机 `viewer_adult.png` 已恢复成人头身比；正交 halfH 调到 1.55 以完整显示腿。
+
+**游戏内盔甲深度**：`SkinnedArmorRenderer.render` 现在显式开启深度测试/写深度（GL_LEQUAL），避免盔甲层覆盖玩家或前后的盔甲。
+同时增加 `[ArmorRender] bounds armor=... skeleton=... source=...` 日志；实机 diamond_chestplate：
+```text
+armor=[-4.5, 0.0, -2.5, 4.5, 12.0, 2.5]
+skeleton=[-7.25, -8.5, -4.5, 7.25, 24.0, 4.5]
+source=body
+```
+说明几何/绑定范围正确；若外观仍异常，先检查该 JSON 的 UV 是否采样到正确纹理区域。
 
 **动画缺失回退原版**：标准人形查看器先调用 `humanoid.setupAnim(player, walkAnimation.position(), speed(), ...)` 建立原版基础姿态；自定义 action 只有实际包含该骨骼通道时才覆盖。没有行走/格挡片段时，骨架继续使用原版走路/待机，不会被清成 rest pose。实机模型仍可见，但需更新布局/盔甲几何。
 
@@ -696,10 +705,10 @@ tools/draw_skeleton.py
 
 ### 6.3 验证证据
 
-已实际编译（2026-11-25 19:44，完整 build）：
+已实际编译（2026-11-25 19:49，完整 build）：
 
 ```text
-BUILD SUCCESSFUL in 33s
+BUILD SUCCESSFUL in 29s
 > Task :coreCheck
 CoreDataCheck PASS
 > Task :test
