@@ -14,6 +14,10 @@ import com.yourname.combatoverhaul.engine.core.AnimationClip;
 import com.yourname.combatoverhaul.engine.core.AnimationStateMachine;
 import com.yourname.combatoverhaul.engine.core.BoneCollider;
 import com.yourname.combatoverhaul.engine.core.Pose;
+import com.yourname.combatoverhaul.engine.adapters.SkeletonAdapter;
+import com.yourname.combatoverhaul.engine.adapters.ActionClipAdapter;
+import com.yourname.combatoverhaul.engine.core.Skeleton;
+import com.yourname.combatoverhaul.store.ActionStore;
 import com.yourname.combatoverhaul.client.model.ModelRigJoints;
 import com.yourname.combatoverhaul.client.model.ParsedBone;
 import com.yourname.combatoverhaul.client.model.ParsedCube;
@@ -1231,6 +1235,33 @@ public final class CoreDataCheck {
         collider.halfExtents.set(1, 1, 1);
         check(collider.contains(new Vector3f(0.5f, 0.5f, 0.5f)),
                 "bone collider contains point");
+
+        ParsedBone rootBone = new ParsedBone("root");
+        ParsedBone bodyBone = new ParsedBone("body");
+        bodyBone.parent = rootBone;
+        ParsedModel pm = new ParsedModel();
+        pm.bones.add(rootBone);
+        pm.bones.add(bodyBone);
+        Skeleton skeleton = SkeletonAdapter.from(pm);
+        check(skeleton.global("body") != null, "skeleton adapter global transform");
+
+        ActionStore.Action action = new ActionStore.Action();
+        action.name = "test_walk";
+        action.lengthTicks = 10f;
+        ActionStore.Keyframe kf0 = new ActionStore.Keyframe();
+        kf0.time = 0f;
+        ActionStore.BoneChannel c0 = new ActionStore.BoneChannel();
+        kf0.bones.put("body", c0);
+        ActionStore.Keyframe kf1 = new ActionStore.Keyframe();
+        kf1.time = 10f;
+        ActionStore.BoneChannel c1 = new ActionStore.BoneChannel();
+        c1.pos = new float[]{0, 2, 0};
+        kf1.bones.put("body", c1);
+        action.keyframes.add(kf0);
+        action.keyframes.add(kf1);
+        var clip2 = ActionClipAdapter.from(action);
+        check(Math.abs(clip2.sample(5f).get("body").position.y - 1f) < 1.0e-4f,
+                "action clip adapter sampling");
     }
 
     private static void armorGeometryValidationAndBounds() {
