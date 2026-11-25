@@ -4,6 +4,7 @@ import com.yourname.combatoverhaul.client.anim.ClientAnimHandler;
 import com.yourname.combatoverhaul.client.model.ParsedBone;
 import com.yourname.combatoverhaul.client.model.ParsedModel;
 import com.yourname.combatoverhaul.client.render.HumanoidMeshRenderer;
+import com.yourname.combatoverhaul.client.render.HumanoidViewportRenderer;
 import com.yourname.combatoverhaul.client.screen.ui.EditorDraw;
 import com.yourname.combatoverhaul.combat.ActionCache;
 import com.yourname.combatoverhaul.rig.Rig;
@@ -35,6 +36,7 @@ public final class HumanoidPreviewScreen extends Screen {
     private final net.minecraft.client.model.HumanoidArmorModel<Player> armorOuter;
     private final net.minecraft.client.model.HumanoidArmorModel<Player> armorInner;
     private final ResourceLocation skin;
+    private final HumanoidViewportRenderer viewport = new HumanoidViewportRenderer();
     private ParsedModel poseModel;
     private int actionIndex = -1;
     private float tick;
@@ -409,21 +411,23 @@ public final class HumanoidPreviewScreen extends Screen {
         int vy0 = 34;
         int vx1 = width - Math.max(112, Math.min(180, width / 3)) + 2;
         int vy1 = height - 36;
-        double cx = width * 0.56;
-        double cy = height * 0.54;
-        double scale = Math.min(width, height) * 1.7 / 24.0 * viewZoom * 3.5;
-        List<HumanoidMeshRenderer.Layer> layers = new ArrayList<>();
-        layers.add(new HumanoidMeshRenderer.Layer(humanoid, skin));
+        List<HumanoidViewportRenderer.Layer> layers = new ArrayList<>();
+        layers.add(new HumanoidViewportRenderer.Layer(humanoid, skin));
         if (helmet || chest || legs || boots) {
             syncArmorVisibility();
-            layers.add(new HumanoidMeshRenderer.Layer(armorOuter,
+            layers.add(new HumanoidViewportRenderer.Layer(armorOuter,
                     new ResourceLocation("minecraft:textures/models/armor/diamond_layer_1.png")));
-            layers.add(new HumanoidMeshRenderer.Layer(armorInner,
+            layers.add(new HumanoidViewportRenderer.Layer(armorInner,
                     new ResourceLocation("minecraft:textures/models/armor/diamond_layer_2.png")));
         }
-        HumanoidMeshRenderer.render(g, layers, cx, cy, scale, viewYaw, viewPitch);
+        g.flush();
+        viewport.render(g, vx0, vy0, vx1 - vx0, vy1 - vy0,
+                viewYaw, viewPitch, layers);
+        g.flush();
         if (jointMode) {
-            renderJoints(g, cx, cy, scale);
+            // 关节线下一阶段直接画进 RenderTarget；这里先保留状态显示。
+            g.drawString(font, "关节模式（3D overlay 待接）", listW + 8, height - 34,
+                    0xFFFFCC66, false);
         }
         EditorDraw.vline(g, listW, 0, height, 0xFF3A4250);
         g.drawString(font, "动作 tick: " + (int) tick, listW + 8, height - 18, 0xFF9FA8B8, false);
@@ -570,6 +574,12 @@ public final class HumanoidPreviewScreen extends Screen {
         viewZoom = Math.max(0.35f, Math.min(3.0f,
                 viewZoom * (float) Math.pow(1.12, Math.signum(delta))));
         return true;
+    }
+
+    @Override
+    public void onClose() {
+        viewport.close();
+        super.onClose();
     }
 
     @Override

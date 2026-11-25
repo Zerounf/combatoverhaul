@@ -1,8 +1,8 @@
 # CombatOverhaul 交接文档
 
-最后更新：2026-11-25 13:44（Asia/Shanghai）
+最后更新：2026-11-25 16:50（Asia/Shanghai）
 工程根目录：`C:\Users\Zero\Desktop\more_damage\combatoverhaul`
-当前构建：`build/libs/combatoverhaul-1.0.0.jar`，582,879 bytes，2026-11-25 13:44:51
+当前构建：`build/libs/combatoverhaul-1.0.0.jar`，588,280 bytes，2026-11-25 16:50:09
 当前自检：`gradlew coreCheck --offline` PASS（默认 + ER + 原生 player/Alex + 多段比例切分 + source_bones + bind_bones + 双层皮肤切割 + 显式跟随映射 + 接缝柔化 + 玩家渲染回接）
 部署状态：已同步到 `E:\.minecraft\versions\DLC测试\mods\` 与 `prod_run\mods\`（SHA-256 一致）
 
@@ -177,6 +177,14 @@ name / parent / semantic 输入
 实机 `viewer_compact.png` 仍暴露右侧按钮文字被裁切/布局偏挤问题，已把盔甲按钮改为单列短标签，但整体属性面板仍需重做。当前只是第一版可用，不是最终 UI。
 
 **DSH 插件检查**：当前插件目录/市场没有 Minecraft 3D 模型、动画编辑器或截图理解增强插件；CUA 仅 macOS 且本机 unsupported。显示问题不能靠装插件解决，必须改编辑器 UI。
+
+**3D RenderTarget 视口（新）**：`HumanoidViewportRenderer` 将 PlayerModel + 盔甲层渲染到离屏 `TextureTarget`，GUI 只 blit 纹理。
+```text
+target 分辨率 = 逻辑视口 * GUI scale
+GL_NEAREST 过滤
+真实 perspective 相机
+```
+实机验证：模型清晰、可显示 3D 透视；当前相机取景仍偏近，头部姿态/盔甲位置还需调。截图 `viewer_rt_physical.png`。右侧按钮文字仍被裁切，需要下一步布局重做。
 
 **动画缺失回退原版**：标准人形查看器先调用 `humanoid.setupAnim(player, walkAnimation.position(), speed(), ...)` 建立原版基础姿态；自定义 action 只有实际包含该骨骼通道时才覆盖。没有行走/格挡片段时，骨架继续使用原版走路/待机，不会被清成 rest pose。实机模型仍可见，但需更新布局/盔甲几何。
 
@@ -616,10 +624,10 @@ tools/draw_skeleton.py
 
 ### 6.3 验证证据
 
-已实际编译（2026-11-25 13:44，完整 build）：
+已实际编译（2026-11-25 16:50，完整 build）：
 
 ```text
-BUILD SUCCESSFUL in 41s
+BUILD SUCCESSFUL in 31s
 > Task :coreCheck
 CoreDataCheck PASS
 > Task :test
