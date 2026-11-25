@@ -1,8 +1,8 @@
 # CombatOverhaul 交接文档
 
-最后更新：2026-11-25 19:56（Asia/Shanghai）
+最后更新：2026-11-25 19:59（Asia/Shanghai）
 工程根目录：`C:\Users\Zero\Desktop\more_damage\combatoverhaul`
-当前构建：`build/libs/combatoverhaul-1.0.0.jar`，603,241 bytes，2026-11-25 19:56:30
+当前构建：`build/libs/combatoverhaul-1.0.0.jar`，603,253 bytes，2026-11-25 19:59:38
 当前自检：`gradlew coreCheck --offline` PASS（默认 + ER + 原生 player/Alex + 多段比例切分 + source_bones + bind_bones + 双层皮肤切割 + 显式跟随映射 + 接缝柔化 + 玩家渲染回接）
 部署状态：已同步到 `E:\.minecraft\versions\DLC测试\mods\` 与 `prod_run\mods\`（SHA-256 一致）
 
@@ -278,6 +278,9 @@ source=body
 
 **玩家程序动画回退（新）**：`SkinnedPlayerRenderer` 在没有自定义动作/空 pose 时，调用缓存的原版 `PlayerModel.setupAnim`（走路、摆臂、使用物品、头部注视），再用 `BedrockPose.fromPlayerModel` 转成骨骼 pose。
 之前自绘玩家只读自定义动作，没动作时就是僵直站姿。
+
+**真正 open 编辑器视口深度（重要）**：`ModelPreviewRenderer.render` 之前也调用 `RenderSystem.disableDepthTest()`；`open`/`ModelEditorScreen` 的 3D 视口不是 `HumanoidViewportRenderer`，所以之前修的那条路径没有覆盖用户实际模型。
+现在改为 `enableDepthTest + depthMask(true) + GL_LEQUAL`，模型多层/盔甲叠层不再无条件互相覆盖。构建 603,253 bytes。
 
 **动画缺失回退原版**：标准人形查看器先调用 `humanoid.setupAnim(player, walkAnimation.position(), speed(), ...)` 建立原版基础姿态；自定义 action 只有实际包含该骨骼通道时才覆盖。没有行走/格挡片段时，骨架继续使用原版走路/待机，不会被清成 rest pose。实机模型仍可见，但需更新布局/盔甲几何。
 
@@ -717,10 +720,10 @@ tools/draw_skeleton.py
 
 ### 6.3 验证证据
 
-已实际编译（2026-11-25 19:56，完整 build）：
+已实际编译（2026-11-25 19:59，完整 build）：
 
 ```text
-BUILD SUCCESSFUL in 21s
+BUILD SUCCESSFUL in 20s
 > Task :coreCheck
 CoreDataCheck PASS
 > Task :test

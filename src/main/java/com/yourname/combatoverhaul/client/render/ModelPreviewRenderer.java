@@ -168,7 +168,10 @@ public final class ModelPreviewRenderer {
         // GUI 正交投影的 near/far 固定；camZ 不应随模型半径缩到近平面里。
         // 固定放到深度预算中段，再用 disableDepthTest 避免任何角度被深度裁掉。
         float camZ = 6500.0f;
-        com.mojang.blaze3d.systems.RenderSystem.disableDepthTest();
+        // 不能关深度：模型多层/盔甲叠层会无条件覆盖前面的面。
+        com.mojang.blaze3d.systems.RenderSystem.enableDepthTest();
+        com.mojang.blaze3d.systems.RenderSystem.depthMask(true);
+        com.mojang.blaze3d.systems.RenderSystem.depthFunc(515); // GL_LEQUAL
         pose.translate(camCx + panX, camCy + panY, camZ);
         pose.scale(zoom, zoom, zoom);
         // （相机中心与剪裁已由调用方给出，此处仅模型居中）
