@@ -416,8 +416,16 @@ public final class SkinnedArmorRenderer {
         if (b == null) {
             return;
         }
+        // 原版 HumanoidArmorLayer 的 copyPropertiesTo 会复制 part 的位置/旋转/缩放。
+        // 这里也必须复制完整姿势，否则自定义玩家骨架的肩/髋位置变化时盔甲会留在旧位置。
+        part.x = b.pivotX;
+        part.y = b.pivotY;
+        part.z = b.pivotZ;
         part.xRot = b.fx();
         part.yRot = b.fy();
         part.zRot = b.fz();
+        part.xScale = b.scaleX;
+        part.yScale = b.scaleY;
+        part.zScale = b.scaleZ;
     }
 }

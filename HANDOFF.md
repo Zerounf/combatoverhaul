@@ -1,8 +1,8 @@
 # CombatOverhaul 交接文档
 
-最后更新：2026-11-25 19:34（Asia/Shanghai）
+最后更新：2026-11-25 19:39（Asia/Shanghai）
 工程根目录：`C:\Users\Zero\Desktop\more_damage\combatoverhaul`
-当前构建：`build/libs/combatoverhaul-1.0.0.jar`，601,319 bytes，2026-11-25 19:34:02
+当前构建：`build/libs/combatoverhaul-1.0.0.jar`，601,443 bytes，2026-11-25 19:39:49
 当前自检：`gradlew coreCheck --offline` PASS（默认 + ER + 原生 player/Alex + 多段比例切分 + source_bones + bind_bones + 双层皮肤切割 + 显式跟随映射 + 接缝柔化 + 玩家渲染回接）
 部署状态：已同步到 `E:\.minecraft\versions\DLC测试\mods\` 与 `prod_run\mods\`（SHA-256 一致）
 
@@ -239,6 +239,13 @@ enableCull
 ```
 RT 先画 player，再画 armor，深度决定遮挡。图2“盔甲完全压住模型”由此修复。
 Spark Core 源码只提供模型/骨骼/动画几何，不包含 Minecraft 盔甲层渲染；它没有“重新居中”盔甲的逻辑，核心规则是 bone 自己的 pivot 变换。
+
+**盔甲姿势改用原版 copyPropertiesTo**：Viewer 不再手写只复制旋转，直接：
+```java
+humanoid.copyPropertiesTo(armorOuter);
+humanoid.copyPropertiesTo(armorInner);
+```
+这与 `HumanoidArmorLayer` 一致。`SkinnedArmorRenderer.renderVanillaFallback` 的 `copyPart` 也补齐了 x/y/z 与 xScale/yScale/zScale，避免自定义玩家骨架的肩/髋位置变化后盔甲留在旧位置。
 
 **动画缺失回退原版**：标准人形查看器先调用 `humanoid.setupAnim(player, walkAnimation.position(), speed(), ...)` 建立原版基础姿态；自定义 action 只有实际包含该骨骼通道时才覆盖。没有行走/格挡片段时，骨架继续使用原版走路/待机，不会被清成 rest pose。实机模型仍可见，但需更新布局/盔甲几何。
 
@@ -678,10 +685,10 @@ tools/draw_skeleton.py
 
 ### 6.3 验证证据
 
-已实际编译（2026-11-25 19:34，完整 build）：
+已实际编译（2026-11-25 19:39，完整 build）：
 
 ```text
-BUILD SUCCESSFUL in 19s
+BUILD SUCCESSFUL in 36s
 > Task :coreCheck
 CoreDataCheck PASS
 > Task :test

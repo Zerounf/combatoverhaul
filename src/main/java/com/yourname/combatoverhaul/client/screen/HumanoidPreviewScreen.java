@@ -463,13 +463,10 @@ public final class HumanoidPreviewScreen extends Screen {
     }
 
     private void syncArmorVisibility() {
-        // 盔甲必须复用玩家 part 的原始 pivot/旋转/缩放，而不是只复制动画旋转。
-        copyPart(humanoid.head, armorOuter.head, armorInner.head);
-        copyPart(humanoid.body, armorOuter.body, armorInner.body);
-        copyPart(humanoid.rightArm, armorOuter.rightArm, armorInner.rightArm);
-        copyPart(humanoid.leftArm, armorOuter.leftArm, armorInner.leftArm);
-        copyPart(humanoid.rightLeg, armorOuter.rightLeg, armorInner.rightLeg);
-        copyPart(humanoid.leftLeg, armorOuter.leftLeg, armorInner.leftLeg);
+        // 直接走原版 HumanoidModel.copyPropertiesTo：pivot/旋转/缩放的复制规则
+        // 与 HumanoidArmorLayer 完全一致，避免手写 copy 漏字段。
+        humanoid.copyPropertiesTo(armorOuter);
+        humanoid.copyPropertiesTo(armorInner);
         armorOuter.setAllVisible(false);
         armorOuter.head.visible = helmet;
         armorOuter.body.visible = chest;
