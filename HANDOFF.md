@@ -1,8 +1,8 @@
 # CombatOverhaul 交接文档
 
-最后更新：2026-11-25 19:28（Asia/Shanghai）
+最后更新：2026-11-25 19:34（Asia/Shanghai）
 工程根目录：`C:\Users\Zero\Desktop\more_damage\combatoverhaul`
-当前构建：`build/libs/combatoverhaul-1.0.0.jar`，601,298 bytes，2026-11-25 19:28:22
+当前构建：`build/libs/combatoverhaul-1.0.0.jar`，601,319 bytes，2026-11-25 19:34:02
 当前自检：`gradlew coreCheck --offline` PASS（默认 + ER + 原生 player/Alex + 多段比例切分 + source_bones + bind_bones + 双层皮肤切割 + 显式跟随映射 + 接缝柔化 + 玩家渲染回接）
 部署状态：已同步到 `E:\.minecraft\versions\DLC测试\mods\` 与 `prod_run\mods\`（SHA-256 一致）
 
@@ -228,6 +228,17 @@ halfW = halfH * aspect
 - `SkinnedArmorRenderer.load` 不再调用 `alignToSkeleton`；之前它把盔甲网格按玩家 AABB **重新居中**，直接破坏作者模型位置。现在只保留模型自己的 origin/pivot，并在日志打印 `keep model-space placement`。
 - Viewer 的 `syncArmorVisibility` 改为从 `humanoid.head/body/rightArm/...` 复制 **x/y/z + 全部旋转 + xScale/yScale/zScale** 到盔甲 part，不再只复制动画旋转。
 注意：去掉自动居中后，自定义盔甲 JSON 必须按玩家模型坐标书写；这是“按原本模型位置放”的预期。
+
+**Viewer 深度测试（关键）**：`HumanoidViewportRenderer` 之前调试时 `disableDepthTest()`，导致盔甲层无条件覆盖玩家层。
+现在恢复：
+```text
+enableDepthTest
+depthMask(true)
+depthFunc(GL_LEQUAL)
+enableCull
+```
+RT 先画 player，再画 armor，深度决定遮挡。图2“盔甲完全压住模型”由此修复。
+Spark Core 源码只提供模型/骨骼/动画几何，不包含 Minecraft 盔甲层渲染；它没有“重新居中”盔甲的逻辑，核心规则是 bone 自己的 pivot 变换。
 
 **动画缺失回退原版**：标准人形查看器先调用 `humanoid.setupAnim(player, walkAnimation.position(), speed(), ...)` 建立原版基础姿态；自定义 action 只有实际包含该骨骼通道时才覆盖。没有行走/格挡片段时，骨架继续使用原版走路/待机，不会被清成 rest pose。实机模型仍可见，但需更新布局/盔甲几何。
 
@@ -667,10 +678,10 @@ tools/draw_skeleton.py
 
 ### 6.3 验证证据
 
-已实际编译（2026-11-25 19:28，完整 build）：
+已实际编译（2026-11-25 19:34，完整 build）：
 
 ```text
-BUILD SUCCESSFUL in 27s
+BUILD SUCCESSFUL in 19s
 > Task :coreCheck
 CoreDataCheck PASS
 > Task :test

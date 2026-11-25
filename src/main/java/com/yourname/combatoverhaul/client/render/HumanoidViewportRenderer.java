@@ -58,8 +58,12 @@ public final class HumanoidViewportRenderer {
         target.setClearColor(0.075f, 0.085f, 0.105f, 1f);
         target.clear(true);
         target.bindWrite(true);
-        RenderSystem.disableDepthTest();
-        RenderSystem.disableCull();
+        // 必须保留深度测试：玩家先画，盔甲后画时由深度决定遮挡关系，
+        // 否则盔甲会无条件盖在玩家身上（之前调试模型可见性时关掉过）。
+        RenderSystem.enableDepthTest();
+        RenderSystem.depthMask(true);
+        RenderSystem.depthFunc(515); // GL_LEQUAL
+        RenderSystem.enableCull();
 
         // 模型预览用正交投影：头/身比例不会被近距离透视放大，滚动只改变取景范围。
         float halfH = 1.35f / Math.max(0.35f, zoom);
