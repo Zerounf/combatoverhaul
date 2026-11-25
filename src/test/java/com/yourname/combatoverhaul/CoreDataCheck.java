@@ -17,6 +17,9 @@ import com.yourname.combatoverhaul.engine.core.Pose;
 import com.yourname.combatoverhaul.engine.adapters.SkeletonAdapter;
 import com.yourname.combatoverhaul.engine.adapters.ActionClipAdapter;
 import com.yourname.combatoverhaul.engine.core.Skeleton;
+import com.yourname.combatoverhaul.engine.core.SkeletonPose;
+import com.yourname.combatoverhaul.engine.core.ColliderRuntime;
+import com.yourname.combatoverhaul.engine.core.AnimationRuntime;
 import com.yourname.combatoverhaul.store.ActionStore;
 import com.yourname.combatoverhaul.client.model.ModelRigJoints;
 import com.yourname.combatoverhaul.client.model.ParsedBone;
@@ -1262,6 +1265,20 @@ public final class CoreDataCheck {
         var clip2 = ActionClipAdapter.from(action);
         check(Math.abs(clip2.sample(5f).get("body").position.y - 1f) < 1.0e-4f,
                 "action clip adapter sampling");
+
+        AnimationRuntime runtime = new AnimationRuntime(skeleton);
+        runtime.states().add("walk", clip2);
+        runtime.states().play("walk", 0f);
+        runtime.update(5f);
+        SkeletonPose skinned = runtime.sampleMatrices();
+        check(Float.isFinite(skinned.global("body").m31()),
+                "animation runtime skeleton pose");
+
+        BoneCollider localCollider = new BoneCollider("body");
+        localCollider.halfExtents.set(1, 1, 1);
+        BoneCollider worldCollider = ColliderRuntime.world(localCollider, skinned, "body");
+        check(Float.isFinite(worldCollider.center.y),
+                "collider runtime world transform");
     }
 
     private static void armorGeometryValidationAndBounds() {
