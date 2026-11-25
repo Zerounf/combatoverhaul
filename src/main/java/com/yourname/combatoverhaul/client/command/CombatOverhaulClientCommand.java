@@ -101,6 +101,25 @@ public final class CombatOverhaulClientCommand {
             return 1;
         }));
 
+        // ---- engine：实验性 Spark 风格运行时实验室
+        root.then(Commands.literal("engine").executes(ctx -> {
+            Minecraft mc = Minecraft.getInstance();
+            if (mc.player == null || mc.level == null) {
+                feedback(ctx.getSource(), "需要先进入世界");
+                return 0;
+            }
+            String path = com.yourname.combatoverhaul.client.anim.ClientAnimHandler
+                    .playerModelPath(mc.player);
+            var entry = com.yourname.combatoverhaul.combat.ActionCache.get(
+                    com.yourname.combatoverhaul.combat.ActionCache.keyFor("minecraft", path, false));
+            if (entry == null || entry.model == null) {
+                feedback(ctx.getSource(), "当前玩家模型未加载");
+                return 0;
+            }
+            mc.setScreen(new com.yourname.combatoverhaul.client.screen.EngineLabScreen(entry.model));
+            return 1;
+        }));
+
         // ---- rig：打开当前玩家模型引用的点状 rig 编辑器
         root.then(Commands.literal("rig").executes(ctx -> {
             Minecraft mc = Minecraft.getInstance();

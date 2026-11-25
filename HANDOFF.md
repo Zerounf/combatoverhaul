@@ -1,8 +1,8 @@
 # CombatOverhaul 交接文档
 
-最后更新：2026-11-25 21:26（Asia/Shanghai）
+最后更新：2026-11-25 21:29（Asia/Shanghai）
 工程根目录：`C:\Users\Zero\Desktop\more_damage\combatoverhaul`
-当前构建：`build/libs/combatoverhaul-1.0.0.jar`，630,386 bytes，2026-11-25 21:26:43
+当前构建：`build/libs/combatoverhaul-1.0.0.jar`，637,117 bytes，2026-11-25 21:29:35
 当前自检：`gradlew coreCheck --offline` PASS（默认 + ER + 原生 player/Alex + 多段比例切分 + source_bones + bind_bones + 双层皮肤切割 + 显式跟随映射 + 接缝柔化 + 玩家渲染回接）
 部署状态：已同步到 `E:\.minecraft\versions\DLC测试\mods\` 与 `prod_run\mods\`（SHA-256 一致）
 
@@ -316,6 +316,20 @@ CoreDataCheck 已加入 clip 采样、状态机、collider 测试，PASS。
 这是纯 Java、与 Minecraft 渲染解耦的 Spark Core 风格运行时第一版；尚未替换任何现有渲染路径。
 补充（21:23）：新增 `Skeleton`/`SkeletonBone`、`SkeletonAdapter`（ParsedModel -> runtime skeleton）、`ActionClipAdapter`（ActionStore.Action -> AnimationClip，Euler ZYX -> QuatTrack）。CoreDataCheck 增加 skeleton global、action clip sampling，PASS。
 补充（21:26）：新增 `SkeletonPose`（rest + pose offset -> local/global 矩阵）、`Montage`（一次性动作层 + weight）、`AnimationRuntime`（状态机 + montage + skeleton pose）、`ColliderRuntime`（局部 OBB -> 模型空间）。测试覆盖 runtime 矩阵与 collider 世界变换，PASS。仍未接任何 Minecraft 渲染路径。
+
+**Engine Lab 成品入口（21:29）**：新增 `client/screen/EngineLabScreen`，命令：
+```text
+/combatoverhaul engine
+```
+它做：
+- 读取当前玩家 ParsedModel
+- `SkeletonAdapter` -> 运行时 Skeleton
+- `ActionClipAdapter` 把动作转 AnimationClip
+- `AnimationStateMachine` 播放/切换
+- 每 tick `AnimationRuntime.sample()` -> ParsedBone.anim*，驱动现有 3D 预览
+- 叠加骨骼线 + 每根 cube 的 `BoneCollider` OBB 线框
+按钮：暂停 / 下一个动作 / 骨骼 / 碰撞体 / 关闭。
+这是第一个“可以在游戏里看到 engine/core 实际运行”的成品入口；尚未替换实体默认渲染。
 
 **动画缺失回退原版**：标准人形查看器先调用 `humanoid.setupAnim(player, walkAnimation.position(), speed(), ...)` 建立原版基础姿态；自定义 action 只有实际包含该骨骼通道时才覆盖。没有行走/格挡片段时，骨架继续使用原版走路/待机，不会被清成 rest pose。实机模型仍可见，但需更新布局/盔甲几何。
 
@@ -755,10 +769,10 @@ tools/draw_skeleton.py
 
 ### 6.3 验证证据
 
-已实际编译（2026-11-25 21:26，完整 build）：
+已实际编译（2026-11-25 21:29，完整 build）：
 
 ```text
-BUILD SUCCESSFUL in 21s
+BUILD SUCCESSFUL in 27s
 > Task :coreCheck
 CoreDataCheck PASS
 > Task :test
