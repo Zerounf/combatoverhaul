@@ -52,8 +52,11 @@ public final class SkinnedPlayerRenderer {
         VertexConsumer vc = buffers.getBuffer(
                 RenderType.entityCutoutNoCull(skin));
         // 和原版实体一样使用世界传入的 packed light，让皮肤受环境光影响。
-        SkinnedMeshRenderer.render(vc, pose, model, model.skinnedMesh, bp,
-                light, OverlayTexture.NO_OVERLAY);
+        // 玩家原生模型是 6 个刚性 part；自动蒙皮会把手臂顶点分到 body/肩段，
+        // 导致手臂离开肩膀。这里按 source_bone 直接跟随，和 Spark 的 bone-local
+        // 模型语义一致；手肘/膝盖的分段在模型树里已经存在时仍由各自 bone 驱动。
+        SkinnedMeshRenderer.renderRigid(vc, pose, model, model.skinnedMesh, bp,
+                light, OverlayTexture.NO_OVERLAY, java.util.Map.of());
         if (buffers instanceof MultiBufferSource.BufferSource bs) {
             bs.endBatch();
         }
